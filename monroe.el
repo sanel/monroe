@@ -78,6 +78,8 @@ lexical binding is not used; this also disables closures.")
 
 ;;; message stuff
 
+;; Idea for message handling (via callbacks) and destructuring response is shamelessly
+;; stolen from nrepl.el.
 (defmacro monroe-dbind-response (response keys &rest body)
   "Destructure an nREPL response dict."
   `(let ,(loop for key in keys
@@ -151,7 +153,6 @@ be called when reply is received."
   (let* ((id       (number-to-string (incf monroe-requests-counter)))
 		 (message  (append (list "id" id) request))
 		 (bmessage (monroe-encode message)))
-	;(message (format "-> %s|%s|" message bmessage))
 	(puthash id callback monroe-requests)
 	(monroe-write-message "*monroe-connection*" bmessage)))
 
@@ -185,8 +186,8 @@ the operations supported by an nREPL endpoint."
 ;;; code
 
 (defun monroe-input-sender (proc input)
-  (comint-add-to-input-history input)
-  ;(message "i-> |%s|" input)
+  "Called when user enter data in REPL and when something is received in
+'monroe-fake-proc'."
   (monroe-send-eval-string input
    (lambda (response)
 	 (monroe-dbind-response response (id ns value err out)
@@ -201,6 +202,12 @@ the operations supported by an nREPL endpoint."
 		 (comint-output-filter monroe-fake-proc output)
 		 (comint-output-filter monroe-fake-proc (format "%s=> " monroe-buffer-ns)))))))
 
+(defun monroe-input-sender-with-history (proc input)
+  "Called when user enter data in REPL. It will also record input for
+history purposes."
+  (comint-add-to-input-history input)
+  (monroe-input-sender proc input))
+
 (defun monroe-sentinel (process message)
   "Called when connection is changed; in out case dropped."
   (message "nREPL connection closed: %s" message)
@@ -209,7 +216,6 @@ the operations supported by an nREPL endpoint."
 
 (defun monroe-dispatch (response)
   "Find response id and call associated callback."
-  ;(message "Calling dispatch on %s" response)
   (monroe-dbind-response response (id)
 	(let ((callback (gethash id monroe-requests)))
 	  (when callback
@@ -222,7 +228,6 @@ buffer if the decode successful."
 		 (end     (point-max))
 		 (data    (buffer-substring start end))
 		 (decoded (monroe-decode data)))
-	;(message (format "<d %s|%s|" data decoded))
 	(delete-region start end)
 	decoded))
 
@@ -230,7 +235,6 @@ buffer if the decode successful."
   "Called when the new message is received. Process will redirect
 all received output to this function; it will decode it and put in
 monroe-repl-buffer."
-  ;(message (format "<- %s\n" string))
   (with-current-buffer (process-buffer process)
 	(goto-char (point-max))
 	(insert string)
@@ -266,15 +270,11 @@ monroe-repl-buffer."
 	(delete-process monroe-fake-proc)
 	(setq monroe-fake-proc nil)))
 
-(defun monroe-input-filter-function (str)
-  (message "--->%s\n" str)
-  "boo")
-
 (define-derived-mode monroe-mode comint-mode "Monroe nREPL"
   "Major mode for evaluating commands over nREPL."
   :syntax-table lisp-mode-syntax-table
   (setq comint-prompt-regexp monroe-prompt-regexp)
-  (setq comint-input-sender 'monroe-input-sender)
+  (setq comint-input-sender 'monroe-input-sender-with-history)
   (setq mode-line-process '(":%s"))
   
   ;; a hack to keep comint happy
@@ -287,8 +287,9 @@ monroe-repl-buffer."
 	  (insert (format ";; Monroe nREPL %s\n" monroe-version))
 	  (set-marker (process-mark fake-proc) (point))
 	  (comint-output-filter fake-proc (format "%s=> " monroe-buffer-ns))
-	  ;(add-hook 'comint-input-filter-functions 'monroe-input-filter-function nil t)
-	  (setq monroe-fake-proc fake-proc))))
+	  (setq monroe-fake-proc fake-proc)
+	  ;; important part: redirect 'comint-send-xxx' parts, so shortcuts can work
+	  (set-process-filter fake-proc 'monroe-input-sender))))
 
 ;;; user command
 
