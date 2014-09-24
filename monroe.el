@@ -38,12 +38,17 @@
 ;;; Code:
 
 (require 'comint)
-(require 'inf-lisp)
 
 (defgroup monroe nil
   "Interaction with the nREPL Server."
   :prefix "monroe-"
   :group 'applications)
+
+(defcustom monroe-repl-prompt-format "%s=> "
+  "String used for displaying prompt. '%s' is used as
+placeholder for storing current namespace."
+  :type 'string
+  :group 'monroe)
 
 (defvar monroe-version "0.1.0"
   "The current monroe version.")
@@ -76,6 +81,12 @@ used in inferior-lisp."
   "For storing global fake proc. Since we are aiming to support older Emacs versions,
 lexical binding is not used; this also disables closures.")
 
+(make-variable-buffer-local 'monroe-session)
+(make-variable-buffer-local 'monroe-requests)
+(make-variable-buffer-local 'monroe-requests-counter)
+(make-variable-buffer-local 'monroe-buffer-ns)
+(make-variable-buffer-local 'monroe-connection-process)
+
 ;;; message stuff
 
 ;; Idea for message handling (via callbacks) and destructuring response is shamelessly
@@ -83,8 +94,8 @@ lexical binding is not used; this also disables closures.")
 (defmacro monroe-dbind-response (response keys &rest body)
   "Destructure an nREPL response dict."
   `(let ,(loop for key in keys
-               collect `(,key (cdr (assoc ,(format "%s" key) ,response))))
-     ,@body))
+			   collect `(,key (cdr (assoc ,(format "%s" key) ,response))))
+	 ,@body))
 
 ;;; Bencode
 ;;; Stolen from nrepl.el which is adapted from http://www.emacswiki.org/emacs-en/bencode.el
@@ -128,7 +139,7 @@ lexical binding is not used; this also disables closures.")
 'd<key-len>:key<val-len>:value<key-len>:key<val-len>:valuee', where the message is
 starting with 'd' and ending with 'e'."
   (concat "d"
-    (apply 'concat
+	(apply 'concat
 	  (mapcar (lambda (str)
 				(format "%d:%s" (string-bytes str) str))
 			  message))
@@ -191,8 +202,8 @@ the operations supported by an nREPL endpoint."
   (monroe-send-eval-string input
    (lambda (response)
 	 (monroe-dbind-response response (id ns value err out)
-       ;; we can accept also 'ex' and 'root-ex' variables, but
-       ;; for now ignoring them; 'out' will contain full stacktrace
+	   ;; we can accept also 'ex' and 'root-ex' variables, but
+	   ;; for now ignoring them; 'out' will contain full stacktrace
 	   (let ((output
 			  (apply #'concat
 					 (mapcar (lambda (v) (if v (concat v "\n")))
@@ -200,7 +211,9 @@ the operations supported by an nREPL endpoint."
 		 ;; update namespace if needed
 		 (if ns (setq monroe-buffer-ns ns))
 		 (comint-output-filter monroe-fake-proc output)
-		 (comint-output-filter monroe-fake-proc (format "%s=> " monroe-buffer-ns)))))))
+		 ;; show prompt only when no output is given in any of received vars
+		 (unless (or err out value)
+		   (comint-output-filter monroe-fake-proc (format monroe-repl-prompt-format monroe-buffer-ns))))))))
 
 (defun monroe-input-sender-with-history (proc input)
   "Called when user enter data in REPL. It will also record input for
@@ -246,7 +259,7 @@ monroe-repl-buffer."
   "Returns callback that is called when new connection is established."
   (lambda (response)
 	(monroe-dbind-response response (id new-session)
-      (when new-session
+	  (when new-session
 		(message "Connected.")
 		(setq monroe-session new-session)
 		(remhash id monroe-requests)))))
@@ -257,7 +270,7 @@ monroe-repl-buffer."
   (let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
 	(set-process-filter process 'monroe-net-filter)
 	(set-process-sentinel process 'monroe-sentinel)
-    (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
+	(set-process-coding-system process 'utf-8-unix 'utf-8-unix)
 	(monroe-send-hello (monroe-new-session-handler (process-buffer process)))
 	process))
 
@@ -270,13 +283,59 @@ monroe-repl-buffer."
 	(delete-process monroe-fake-proc)
 	(setq monroe-fake-proc nil)))
 
+;;; keys
+
+(defun monroe-eval-region (start end)
+  "Evaluate selected region."
+  (interactive "r")
+  (monroe-input-sender nil (buffer-substring-no-properties start end)))
+
+(defun monroe-eval-buffer ()
+  "Evaluate the buffer."
+  (interactive)
+  (monroe-eval-region (point-min) (point-max)))
+
+(defun monroe-eval-expression-at-point ()
+  "Figure out expression at point and send it for evaluation."
+  (interactive)
+  (save-excursion
+	(end-of-defun)
+	(let ((end (point)))
+	  (beginning-of-defun)
+	  (monroe-eval-region (point) end))))
+
+(defun monroe-eval-doc (symbol)
+  (monroe-input-sender nil (format "(clojure.repl/doc %s)" symbol)))
+
+(defun monroe-describe (symbol)
+  "Ask user about symbol and show symbol documentation if found."
+  (interactive
+   (list
+	(read-string
+	 (format "Symbol: %s" (let ((str (thing-at-point 'symbol)))
+							(if str
+							  (substring-no-properties str) "")))
+	 nil nil (thing-at-point 'symbol))))
+  (monroe-eval-doc symbol))
+
+;; keys for interacting with monre buffer
+(defvar monroe-interaction-mode-map
+  (let ((map (make-sparse-keymap)))
+	(define-key map "\C-c\C-c" 'monroe-eval-expression-at-point)
+	(define-key map "\C-c\C-r" 'monroe-eval-region)
+	(define-key map "\C-c\C-k" 'monroe-eval-buffer)
+	(define-key map "\C-c\C-d" 'monroe-describe)
+	map))
+
+;;; rest
+
 (define-derived-mode monroe-mode comint-mode "Monroe nREPL"
   "Major mode for evaluating commands over nREPL."
   :syntax-table lisp-mode-syntax-table
   (setq comint-prompt-regexp monroe-prompt-regexp)
   (setq comint-input-sender 'monroe-input-sender-with-history)
   (setq mode-line-process '(":%s"))
-  
+
   ;; a hack to keep comint happy
   (unless (comint-check-proc (current-buffer))
 	(let ((fake-proc
@@ -286,12 +345,15 @@ monroe-repl-buffer."
 	  (set-process-query-on-exit-flag fake-proc nil)
 	  (insert (format ";; Monroe nREPL %s\n" monroe-version))
 	  (set-marker (process-mark fake-proc) (point))
-	  (comint-output-filter fake-proc (format "%s=> " monroe-buffer-ns))
-	  (setq monroe-fake-proc fake-proc)
-	  ;; important part: redirect 'comint-send-xxx' parts, so shortcuts can work
-	  (set-process-filter fake-proc 'monroe-input-sender))))
+	  (comint-output-filter fake-proc (format monroe-repl-prompt-format monroe-buffer-ns))
+	  (setq monroe-fake-proc fake-proc))))
 
 ;;; user command
+
+;;;###autoload
+(define-minor-mode monroe-interaction-mode
+  "Minor mode for Monroe interaction from a Clojure buffer."
+  nil " Monroe" monroe-interaction-mode-map)
 
 ;;;###autoload
 (defun monroe (host port)
@@ -304,8 +366,7 @@ connection endpoint."
 			(prog1
 				(monroe-connect host port)
 			  (monroe-mode)
-			  (switch-to-buffer monroe-repl-buffer)
-			  (setq inferior-lisp-buffer monroe-repl-buffer)))))
+			  (switch-to-buffer monroe-repl-buffer)))))
   (unless monroe-connection-process
 	(message "Unable to connect to %s:%s." host port)))
 
