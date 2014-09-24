@@ -350,6 +350,9 @@ monroe-repl-buffer."
 
 ;;; user command
 
+(defun clojure-enable-monroe ()
+  (monroe-interaction-mode t))
+
 ;;;###autoload
 (define-minor-mode monroe-interaction-mode
   "Minor mode for Monroe interaction from a Clojure buffer."
