@@ -276,12 +276,15 @@ monroe-repl-buffer."
 
 (defun monroe-disconnect ()
   "Disconnect from current nrepl connection."
-  (when monroe-connection-process
-	(monroe-clear-request-table)
-	(delete-process monroe-connection-process)
-	(setq monroe-connection-process nil)
-	(delete-process monroe-fake-proc)
-	(setq monroe-fake-proc nil)))
+  (monroe-clear-request-table)
+  (let ((delete-process-safe (lambda (p)
+							   (when (and p (process-live-p p))
+								 (delete-process p))))
+		(proc1 (get-buffer-process monroe-repl-buffer))
+	    (proc2 (get-buffer-process "*monroe-connection*")))
+	(funcall delete-process-safe proc1)
+	(funcall delete-process-safe proc2)
+	(funcall delete-process-safe monroe-fake-proc)))
 
 ;;; keys
 
