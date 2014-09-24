@@ -1,5 +1,10 @@
 # Monroe - Clojure nREPL client for Emacs
 
+<p align="center">
+<img src="https://raw.github.com/sanel/monroe/master/images/shot.png"
+     alt="Monroe" title="Monroe screenshot">
+</p>
+
 Monroe is [nREPL](https://github.com/clojure/tools.nrepl) client for
 Emacs, focused on simplicity and easy distribution primarily targeting
 Clojure users.
@@ -27,9 +32,9 @@ Make sure you have
 [clojure-mode.el](https://github.com/clojure-emacs/clojure-mode/blob/master/clojure-mode.el)
 installed first.
 
-Just download official Monroe release, unpack it and put in folder
-where Emacs can access it (usually *$HOME/.emacs.d* or any folder
-listed in 'load-path' variable).
+Download Monroe release or 'monroe.el' file and put in folder where
+Emacs can access it (usually *$HOME/.emacs.d* or any folder listed in
+Emacs *load-path* variable).
 
 In your
 [Emacs init file](https://www.gnu.org/software/emacs/manual/html_node/emacs/Init-File.html),
