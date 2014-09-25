@@ -40,27 +40,25 @@ In your
 [Emacs init file](https://www.gnu.org/software/emacs/manual/html_node/emacs/Init-File.html),
 put:
 
-```
+```el
 (require 'monroe)
 (add-hook 'clojure-mode-hook 'clojure-enable-monroe)
 ```
 
 Then, in Emacs:
 
-```
-M-x monroe
-```
+<kbd>M-x monroe [RET]</kbd>
 
 and follow the questions about nREPL server location and port.
 
 ## Keys and shortcuts
 
-The keys used by Monroe:
-
-* **C-c C-c** - evaluate expression at point
-* **C-c C-r** - evaluate region
-* **C-c C-k** - evaluate buffer
-* **C-c C-d** - describe symbol at point, showing documentation in REPL window
+Keys                | Description
+--------------------|----------------------------
+<kbd>C-c C-c</kbd>  | Evaluate expression at point.
+<kbd>C-c C-r</kbd>  | Evaluate region.
+<kbd>C-c C-k</kbd>  | Evaluate buffer.
+<kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 
 ## Bug reports & patches
 
