@@ -50,6 +50,12 @@ placeholder for storing current namespace."
   :type 'string
   :group 'monroe)
 
+(defcustom monroe-prompt-regexp "^[^> \n]*>+:? *"
+  "Regexp to recognize prompts in Monroe more. The same regexp is
+used in inferior-lisp."
+  :type 'regexp
+  :group 'monroe)
+
 (defvar monroe-version "0.1.0"
   "The current monroe version.")
 
@@ -66,16 +72,12 @@ placeholder for storing current namespace."
   "Name of nREPL buffer.")
 
 (defvar monroe-buffer-ns "user"
-  "Current clojure namespace for this buffer.")
+  "Current clojure namespace for this buffer. This namespace
+is only advertised until first expression is evaluated, then is updated
+to the one used on nrepl side.")
 
 (defvar monroe-connection-process nil
   "Current connection object to nREPL server. For internal usage.")
-
-(defcustom monroe-prompt-regexp "^[^> \n]*>+:? *"
-  "Regexp to recognize prompts in Monroe more. The same regexp is
-used in inferior-lisp."
-  :type 'regexp
-  :group 'monroe)
 
 (defvar monroe-fake-proc nil
   "For storing global fake proc. Since we are aiming to support older Emacs versions,
@@ -281,7 +283,7 @@ monroe-repl-buffer."
 							   (when (and p (process-live-p p))
 								 (delete-process p))))
 		(proc1 (get-buffer-process monroe-repl-buffer))
-	    (proc2 (get-buffer-process "*monroe-connection*")))
+		(proc2 (get-buffer-process "*monroe-connection*")))
 	(funcall delete-process-safe proc1)
 	(funcall delete-process-safe proc2)
 	(funcall delete-process-safe monroe-fake-proc)))
@@ -307,6 +309,18 @@ monroe-repl-buffer."
 	  (beginning-of-defun)
 	  (monroe-eval-region (point) end))))
 
+(defun monroe-eval-namespace ()
+  "Tries to evaluate Clojure ns form. It does this by matching first
+expression at the beginning of the file and evaluating it. Not something
+that is 100% accurate, but Clojure practice is to keep ns forms always
+at the top of the file."
+  (interactive)
+  (when (and (fboundp 'clojure-find-ns)
+			 (funcall 'clojure-find-ns))
+	(save-excursion
+	  (goto-char (match-beginning 0))
+	  (monroe-eval-expression-at-point))))
+
 (defun monroe-eval-doc (symbol)
   (monroe-input-sender nil (format "(clojure.repl/doc %s)" symbol)))
 
@@ -327,6 +341,7 @@ monroe-repl-buffer."
 	(define-key map "\C-c\C-c" 'monroe-eval-expression-at-point)
 	(define-key map "\C-c\C-r" 'monroe-eval-region)
 	(define-key map "\C-c\C-k" 'monroe-eval-buffer)
+	(define-key map "\C-c\C-n" 'monroe-eval-namespace)
 	(define-key map "\C-c\C-d" 'monroe-describe)
 	map))
 

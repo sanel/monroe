@@ -10,7 +10,8 @@ Emacs, focused on simplicity and easy distribution primarily targeting
 Clojure users.
 
 If you are not familiar with nREPL, it is protocol for accessing
-Clojure [REPL](http://en.wikipedia.org/wiki/Read-eval-print_loop) over network.
+Clojure [REPL](http://en.wikipedia.org/wiki/Read-eval-print_loop) over
+the network.
 
 In short, Monroe aims to have:
 
@@ -59,6 +60,7 @@ Keys                | Description
 <kbd>C-c C-r</kbd>  | Evaluate region.
 <kbd>C-c C-k</kbd>  | Evaluate buffer.
 <kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
+<kbd>C-c C-n</kbd>  | Evaluate namespace.
 
 ## Bug reports & patches
 
