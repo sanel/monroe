@@ -4,7 +4,7 @@
 ;;
 ;; Author: Sanel Zukan <sanelz@gmail.com>
 ;; URL: http://www.github.com/sanel/monroe
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Keywords: languages, clojure, nrepl, lisp
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -56,7 +56,7 @@ used in inferior-lisp."
   :type 'regexp
   :group 'monroe)
 
-(defvar monroe-version "0.1.0"
+(defvar monroe-version "0.2.0"
   "The current monroe version.")
 
 (defvar monroe-session nil
