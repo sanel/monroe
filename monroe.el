@@ -321,17 +321,20 @@ at the top of the file."
 	  (monroe-eval-expression-at-point))))
 
 (defun monroe-eval-doc (symbol)
+  "Internal function to actually ask for symbol documentation via nrepl protocol."
   (monroe-input-sender nil (format "(clojure.repl/doc %s)" symbol)))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
   (interactive
    (list
-	(read-string
-	 (format "Symbol: %s" (let ((str (thing-at-point 'symbol)))
-							(if str
-							  (substring-no-properties str) "")))
-	 nil nil (thing-at-point 'symbol))))
+	(let* ((sym (thing-at-point 'symbol))
+		   (sym (if sym (substring-no-properties sym)))
+		   (prompt "Describe")
+		   (prompt (if sym
+				     (format "%s (default %s): " prompt sym)
+					 (concat prompt ": "))))
+	  (read-string prompt nil nil sym))))
   (monroe-eval-doc symbol))
 
 ;; keys for interacting with monre buffer
