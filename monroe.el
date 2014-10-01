@@ -388,6 +388,7 @@ connection endpoint."
 		  (with-current-buffer (get-buffer-create monroe-repl-buffer)
 			(prog1
 				(monroe-connect host port)
+			  (goto-char (point-max))
 			  (monroe-mode)
 			  (switch-to-buffer monroe-repl-buffer)))))
   (unless monroe-connection-process
