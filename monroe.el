@@ -206,10 +206,9 @@ the operations supported by an nREPL endpoint."
 	 (monroe-dbind-response response (id ns value err out)
 	   ;; we can accept also 'ex' and 'root-ex' variables, but
 	   ;; for now ignoring them; 'out' will contain full stacktrace
-	   (let ((output
-			  (apply #'concat
-					 (mapcar (lambda (v) (if v (concat v "\n")))
-							 (list err out value)))))
+	   (let ((output (concat err out
+							 (if value
+							   (concat value "\n")))))
 		 ;; update namespace if needed
 		 (if ns (setq monroe-buffer-ns ns))
 		 (comint-output-filter monroe-fake-proc output)
