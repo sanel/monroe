@@ -276,16 +276,18 @@ monroe-repl-buffer."
 	process))
 
 (defun monroe-disconnect ()
-  "Disconnect from current nrepl connection."
+  "Disconnect from current nrepl connection. Calling this function directly
+will force connection closing, which will as result call '(monroe-sentinel)'."
   (monroe-clear-request-table)
   (let ((delete-process-safe (lambda (p)
 							   (when (and p (process-live-p p))
 								 (delete-process p))))
+		;; 'monroe-repl-buffer' process is actually 'monroe-fake-proc'
 		(proc1 (get-buffer-process monroe-repl-buffer))
 		(proc2 (get-buffer-process "*monroe-connection*")))
 	(funcall delete-process-safe proc1)
 	(funcall delete-process-safe proc2)
-	(funcall delete-process-safe monroe-fake-proc)))
+	(setq monroe-fake-proc nil)))
 
 ;;; keys
 
