@@ -56,6 +56,12 @@ used in inferior-lisp."
   :type 'regexp
   :group 'monroe)
 
+(defcustom monroe-default-host "localhost:7888"
+  "Default location where to connect to, unless explicitly given
+location and port. Location and port should be delimited with ':'."
+  :type 'string
+  :group 'monroe)
+
 (defvar monroe-version "0.2.0"
   "The current monroe version.")
 
@@ -112,7 +118,8 @@ lexical binding is not used; this also disables closures.")
 	(let ((start (point))
 		  (end (byte-to-position (+ (position-bytes (point)) (string-to-number (match-string 1))))))
 	  (goto-char end)
-	  (buffer-substring-no-properties start end)))
+	  (if (and start end)
+	    (buffer-substring-no-properties start end))))
    ((looking-at "l")
 	(goto-char (match-end 0))
 	(let (result item)
@@ -134,7 +141,7 @@ lexical binding is not used; this also disables closures.")
 	(goto-char (match-end 0))
 	nil)
    (t
-	(error "Cannot decode object: %d" (point)))))
+	(error "Cannot decode object: %d (%s)" (point) (thing-at-point 'word)))))
 
 (defun monroe-encode (message)
   "Encode message to nrepl format. The message format is
@@ -265,15 +272,24 @@ monroe-repl-buffer."
 		(setq monroe-session new-session)
 		(remhash id monroe-requests)))))
 
-(defun monroe-connect (host port)
+(defun monroe-valid-host-string (str default)
+  "Used for getting valid string for host/port part."
+  (if (and str (not (string= "" str)))
+	str
+	default))
+
+(defun monroe-connect (host-and-port)
   "Connect to remote endpoint using provided hostname and port."
-  (message "Connecting to nREPL host on '%s:%s'..." host port)
-  (let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
-	(set-process-filter process 'monroe-net-filter)
-	(set-process-sentinel process 'monroe-sentinel)
-	(set-process-coding-system process 'utf-8-unix 'utf-8-unix)
-	(monroe-send-hello (monroe-new-session-handler (process-buffer process)))
-	process))
+  (let* ((hp   (split-string host-and-port ":"))
+		 (host (monroe-valid-host-string (first hp) "localhost"))
+		 (port (monroe-valid-host-string (second hp) "7888")))
+	(message "Connecting to nREPL host on '%s:%s'..." host port)
+	(let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
+	  (set-process-filter process 'monroe-net-filter)
+	  (set-process-sentinel process 'monroe-sentinel)
+	  (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
+	  (monroe-send-hello (monroe-new-session-handler (process-buffer process)))
+	  process)))
 
 (defun monroe-disconnect ()
   "Disconnect from current nrepl connection. Calling this function directly
@@ -381,19 +397,22 @@ at the top of the file."
   nil " Monroe" monroe-interaction-mode-map)
 
 ;;;###autoload
-(defun monroe (host port)
+(defun monroe (host-and-port)
   "Load monroe by setting up appropriate mode, asking user for
 connection endpoint."
-  (interactive "sHost: \nnPort: ")
+  (interactive
+   (list
+	(read-string (format "Host (default '%s'): " monroe-default-host)
+				 nil nil monroe-default-host)))
   (setq monroe-connection-process
 		(ignore-errors
 		  (with-current-buffer (get-buffer-create monroe-repl-buffer)
 			(prog1
-				(monroe-connect host port)
+				(monroe-connect host-and-port)
 			  (goto-char (point-max))
 			  (monroe-mode)
 			  (switch-to-buffer monroe-repl-buffer)))))
   (unless monroe-connection-process
-	(message "Unable to connect to %s:%s." host port)))
+	(message "Unable to connect to %s." host-and-port)))
 
 (provide 'monroe)
