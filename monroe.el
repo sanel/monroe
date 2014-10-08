@@ -85,10 +85,6 @@ to the one used on nrepl side.")
 (defvar monroe-connection-process nil
   "Current connection object to nREPL server. For internal usage.")
 
-(defvar monroe-fake-proc nil
-  "For storing global fake proc. Since we are aiming to support older Emacs versions,
-lexical binding is not used; this also disables closures.")
-
 (make-variable-buffer-local 'monroe-session)
 (make-variable-buffer-local 'monroe-requests)
 (make-variable-buffer-local 'monroe-requests-counter)
@@ -206,8 +202,7 @@ the operations supported by an nREPL endpoint."
 ;;; code
 
 (defun monroe-input-sender (proc input)
-  "Called when user enter data in REPL and when something is received in
-'monroe-fake-proc'."
+  "Called when user enter data in REPL and when something is received in."
   (monroe-send-eval-string input
    (lambda (response)
 	 (monroe-dbind-response response (id ns value err out)
@@ -218,10 +213,11 @@ the operations supported by an nREPL endpoint."
 							   (concat value "\n")))))
 		 ;; update namespace if needed
 		 (if ns (setq monroe-buffer-ns ns))
-		 (comint-output-filter monroe-fake-proc output)
+		 (comint-output-filter (get-buffer-process monroe-repl-buffer) output)
 		 ;; show prompt only when no output is given in any of received vars
 		 (unless (or err out value)
-		   (comint-output-filter monroe-fake-proc (format monroe-repl-prompt-format monroe-buffer-ns))))))))
+		   (comint-output-filter (get-buffer-process monroe-repl-buffer)
+								 (format monroe-repl-prompt-format monroe-buffer-ns))))))))
 
 (defun monroe-input-sender-with-history (proc input)
   "Called when user enter data in REPL. It will also record input for
@@ -298,19 +294,18 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
   (let ((delete-process-safe (lambda (p)
 							   (when (and p (process-live-p p))
 								 (delete-process p))))
-		;; 'monroe-repl-buffer' process is actually 'monroe-fake-proc'
+		;; 'monroe-repl-buffer' process is actually 'fake-proc'
 		(proc1 (get-buffer-process monroe-repl-buffer))
 		(proc2 (get-buffer-process "*monroe-connection*")))
 	(funcall delete-process-safe proc1)
-	(funcall delete-process-safe proc2)
-	(setq monroe-fake-proc nil)))
+	(funcall delete-process-safe proc2)))
 
 ;;; keys
 
 (defun monroe-eval-region (start end)
   "Evaluate selected region."
   (interactive "r")
-  (monroe-input-sender nil (buffer-substring-no-properties start end)))
+  (monroe-input-sender (get-buffer-process monroe-repl-buffer) (buffer-substring-no-properties start end)))
 
 (defun monroe-eval-buffer ()
   "Evaluate the buffer."
@@ -340,7 +335,7 @@ at the top of the file."
 
 (defun monroe-eval-doc (symbol)
   "Internal function to actually ask for symbol documentation via nrepl protocol."
-  (monroe-input-sender nil (format "(clojure.repl/doc %s)" symbol)))
+  (monroe-input-sender (get-buffer-process monroe-repl-buffer) (format "(clojure.repl/doc %s)" symbol)))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
@@ -383,8 +378,7 @@ at the top of the file."
 	  (set-process-query-on-exit-flag fake-proc nil)
 	  (insert (format ";; Monroe nREPL %s\n" monroe-version))
 	  (set-marker (process-mark fake-proc) (point))
-	  (comint-output-filter fake-proc (format monroe-repl-prompt-format monroe-buffer-ns))
-	  (setq monroe-fake-proc fake-proc))))
+	  (comint-output-filter fake-proc (format monroe-repl-prompt-format monroe-buffer-ns)))))
 
 ;;; user command
 
