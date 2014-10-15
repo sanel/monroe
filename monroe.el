@@ -82,14 +82,10 @@ location and port. Location and port should be delimited with ':'."
 is only advertised until first expression is evaluated, then is updated
 to the one used on nrepl side.")
 
-(defvar monroe-connection-process nil
-  "Current connection object to nREPL server. For internal usage.")
-
 (make-variable-buffer-local 'monroe-session)
 (make-variable-buffer-local 'monroe-requests)
 (make-variable-buffer-local 'monroe-requests-counter)
 (make-variable-buffer-local 'monroe-buffer-ns)
-(make-variable-buffer-local 'monroe-connection-process)
 
 ;;; message stuff
 
@@ -398,15 +394,14 @@ connection endpoint."
    (list
 	(read-string (format "Host (default '%s'): " monroe-default-host)
 				 nil nil monroe-default-host)))
-  (setq monroe-connection-process
-		(ignore-errors
-		  (with-current-buffer (get-buffer-create monroe-repl-buffer)
-			(prog1
-				(monroe-connect host-and-port)
-			  (goto-char (point-max))
-			  (monroe-mode)
-			  (switch-to-buffer monroe-repl-buffer)))))
-  (unless monroe-connection-process
+
+  (unless (ignore-errors
+			(with-current-buffer (get-buffer-create monroe-repl-buffer)
+			  (prog1
+				  (monroe-connect host-and-port)
+				(goto-char (point-max))
+				(monroe-mode)
+				(switch-to-buffer (current-buffer)))))
 	(message "Unable to connect to %s." host-and-port)))
 
 (provide 'monroe)
