@@ -420,9 +420,10 @@ at the top of the file."
 
 ;; keys for interacting inside Monroe REPL buffer
 (defvar monroe-mode-map
-  (let ((map (copy-keymap comint-mode-map)))
-	(define-key map "\C-c\C-c" 'monroe-interrupt)
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map comint-mode-map)
 	(define-key map "\C-c\C-d" 'monroe-describe)
+	(define-key map "\C-c\C-c" 'monroe-interrupt)
 	map))
 
 ;;; rest
