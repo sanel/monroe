@@ -109,8 +109,8 @@ to the one used on nrepl side.")
 	(goto-char (match-end 0))
 	(let ((start (point))
 		  (end (byte-to-position (+ (position-bytes (point)) (string-to-number (match-string 1))))))
-	  (goto-char end)
-	  (if (and start end)
+	  (when (and start end)
+		(goto-char end)
 	    (buffer-substring-no-properties start end))))
    ((looking-at "l")
 	(goto-char (match-end 0))
@@ -133,7 +133,7 @@ to the one used on nrepl side.")
 	(goto-char (match-end 0))
 	nil)
    (t
-	(error "Cannot decode object: %d (%s)" (point) (thing-at-point 'word)))))
+	(error "Cannot decode object: %d" (point)))))
 
 (defun monroe-encode (message)
   "Encode message to nrepl format. The message format is
@@ -195,31 +195,55 @@ the operations supported by an nREPL endpoint."
 							 "session" (monroe-current-session)
 							 "code" str)
 					   callback))
+
+(defun monroe-send-stdin (str callback)
+  "Send stdin value."
+  (monroe-send-request (list "op" "stdin"
+							 "stdin" str
+							 "session" (monroe-current-session))
+					   callback))
 ;;; code
+
+(defun monroe-make-response-handler ()
+  "Returns a function that will be called when event is received."
+   (lambda (response)
+	 (monroe-dbind-response response (id ns value err out ex root-ex status)
+	   (let ((output (concat err out
+							 (if value
+							   (concat value "\n"))))
+			 (process (get-buffer-process monroe-repl-buffer)))
+		 ;; update namespace if needed
+		 (if ns (setq monroe-buffer-ns ns))
+		 (comint-output-filter process output))
+		 ;; now handle status
+		 (when status
+		   (when (member "eval-error" status)
+			 (monroe-get-stacktrace root-ex ex))
+		   (when (member "interrupted" status)
+			 (message "Evaluation interrupted."))
+		   (when (member "need-input" status)
+			 (monroe-handle-input))
+		   (when (member "done" status)
+			 (remhash id monroe-requests)))
+		 ;; show prompt only when no output is given in any of received vars
+		 (unless (or err out value)
+		   (comint-output-filter process (format monroe-repl-prompt-format monroe-buffer-ns)))))))
 
 (defun monroe-input-sender (proc input)
   "Called when user enter data in REPL and when something is received in."
-  (monroe-send-eval-string input
-   (lambda (response)
-	 (monroe-dbind-response response (id ns value err out)
-	   ;; we can accept also 'ex' and 'root-ex' variables, but
-	   ;; for now ignoring them; 'out' will contain full stacktrace
-	   (let ((output (concat err out
-							 (if value
-							   (concat value "\n")))))
-		 ;; update namespace if needed
-		 (if ns (setq monroe-buffer-ns ns))
-		 (comint-output-filter (get-buffer-process monroe-repl-buffer) output)
-		 ;; show prompt only when no output is given in any of received vars
-		 (unless (or err out value)
-		   (comint-output-filter (get-buffer-process monroe-repl-buffer)
-								 (format monroe-repl-prompt-format monroe-buffer-ns))))))))
+  (monroe-send-eval-string input (monroe-make-response-handler)))
 
 (defun monroe-input-sender-with-history (proc input)
   "Called when user enter data in REPL. It will also record input for
 history purposes."
   (comint-add-to-input-history input)
   (monroe-input-sender proc input))
+
+(defun monroe-handle-input ()
+  "Called when requested user input."
+  (monroe-send-stdin
+   (concat (read-from-minibuffer "Stdin: ") "\n")
+   (monroe-make-response-handler)))
 
 (defun monroe-sentinel (process message)
   "Called when connection is changed; in out case dropped."
@@ -251,9 +275,12 @@ monroe-repl-buffer."
   (with-current-buffer (process-buffer process)
 	(goto-char (point-max))
 	(insert string)
-	(while (> (buffer-size) 1)
-	  (dolist (response (monroe-net-decode))
-		(monroe-dispatch response)))))
+	;; Wait until receive the end of the message. Idea stolen from Cider.
+	(when (eq ?e (aref string (1- (length string))))
+	  (unless (accept-process-output process 0.01)
+		(while (> (buffer-size) 1)
+		  (dolist (response (monroe-net-decode))
+			(monroe-dispatch response)))))))
 
 (defun monroe-new-session-handler (process)
   "Returns callback that is called when new connection is established."
@@ -332,6 +359,14 @@ at the top of the file."
 (defun monroe-eval-doc (symbol)
   "Internal function to actually ask for symbol documentation via nrepl protocol."
   (monroe-input-sender (get-buffer-process monroe-repl-buffer) (format "(clojure.repl/doc %s)" symbol)))
+
+(defun monroe-get-stacktrace (root-ex ex)
+  "When error is happened, try to get as much details as possible from last stracktrace."
+  (monroe-input-sender
+   (get-buffer-process monroe-repl-buffer)
+   "(if-let [pst+ (resolve 'clj-stacktrace.repl/pst)]
+      (pst+ *e)
+      (clojure.stacktrace/print-stack-trace *e))"))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
