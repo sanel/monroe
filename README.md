@@ -56,8 +56,8 @@ and follow the question about nREPL server location and port.
 
 ### Monroe shortcuts for code buffer
 
-These shortcuts are valid from code buffer, where you edit Clojure
-code (where *monroe-interaction-mode* is activated).
+These shortcuts are valid from code buffer where you edit Clojure
+code and where *monroe-interaction-mode* is activated.
 
 Keys                | Description
 --------------------|----------------------------
