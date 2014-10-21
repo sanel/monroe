@@ -214,7 +214,7 @@ the operations supported by an nREPL endpoint."
 			 (process (get-buffer-process monroe-repl-buffer)))
 		 ;; update namespace if needed
 		 (if ns (setq monroe-buffer-ns ns))
-		 (comint-output-filter process output))
+		 (comint-output-filter process output)
 		 ;; now handle status
 		 (when status
 		   (when (member "eval-error" status)
