@@ -74,7 +74,7 @@ These shortcuts are valid in REPL buffer; also, most of the standard
 *comint-mode* shortcuts should work without problems.
 
 Keys                | Description
-------------------------------------------------
+--------------------|----------------------------
 <kbd>C-c C-c</kbd>  | Interrupt running job.
 
 ## Bug reports & patches
