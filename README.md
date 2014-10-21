@@ -75,6 +75,7 @@ These shortcuts are valid in REPL buffer; also, most of the standard
 
 Keys                | Description
 --------------------|----------------------------
+<kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 <kbd>C-c C-c</kbd>  | Interrupt running job.
 
 ## Bug reports & patches

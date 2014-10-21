@@ -422,6 +422,7 @@ at the top of the file."
 (defvar monroe-mode-map
   (let ((map (copy-keymap comint-mode-map)))
 	(define-key map "\C-c\C-c" 'monroe-interrupt)
+	(define-key map "\C-c\C-d" 'monroe-describe)
 	map))
 
 ;;; rest
