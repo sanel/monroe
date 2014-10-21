@@ -62,6 +62,12 @@ location and port. Location and port should be delimited with ':'."
   :type 'string
   :group 'monroe)
 
+(defcustom monroe-detail-stacktraces nil
+  "If set to true, Monroe will try to get full stacktrace from thrown
+exception. Otherwise will just behave as standard REPL version."
+  :type 'boolean
+  :group 'monroe)
+
 (defvar monroe-version "0.2.0"
   "The current monroe version.")
 
@@ -217,7 +223,7 @@ the operations supported by an nREPL endpoint."
 		 (comint-output-filter process output)
 		 ;; now handle status
 		 (when status
-		   (when (member "eval-error" status)
+		   (when (and monroe-detail-stacktraces (member "eval-error" status))
 			 (monroe-get-stacktrace root-ex ex))
 		   (when (member "interrupted" status)
 			 (message "Evaluation interrupted."))
@@ -226,7 +232,7 @@ the operations supported by an nREPL endpoint."
 		   (when (member "done" status)
 			 (remhash id monroe-requests)))
 		 ;; show prompt only when no output is given in any of received vars
-		 (unless (or err out value)
+		 (unless (or err out value root-ex ex)
 		   (comint-output-filter process (format monroe-repl-prompt-format monroe-buffer-ns)))))))
 
 (defun monroe-input-sender (proc input)
