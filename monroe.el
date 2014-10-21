@@ -205,9 +205,17 @@ the operations supported by an nREPL endpoint."
 (defun monroe-send-stdin (str callback)
   "Send stdin value."
   (monroe-send-request (list "op" "stdin"
-							 "stdin" str
-							 "session" (monroe-current-session))
+							 "session" (monroe-current-session)
+							 "stdin" str)
 					   callback))
+
+(defun monroe-send-interrupt (request-id callback)
+  "Send interrupt for pending requests."
+  (monroe-send-request (list "op" "interrupt"
+							 "session" (monroe-current-session)
+							 "interrupt-id" request-id)
+					   callback))
+
 ;;; code
 
 (defun monroe-make-response-handler ()
@@ -387,7 +395,19 @@ at the top of the file."
 	  (read-string prompt nil nil sym))))
   (monroe-eval-doc symbol))
 
-;; keys for interacting with monre buffer
+(defun monroe-extract-keys (htable)
+  "Get all keys from hashtable."
+  (let (keys)
+	(maphash (lambda (k v) (setq keys (cons k keys))) htable)
+	keys))
+
+(defun monroe-interrupt ()
+  "Send interrupt to all pending requests."
+  (interactive)
+  (dolist (id (monroe-extract-keys monroe-requests))
+	(monroe-send-interrupt id (monroe-make-response-handler))))
+
+;; keys for interacting with Monroe REPL buffer
 (defvar monroe-interaction-mode-map
   (let ((map (make-sparse-keymap)))
 	(define-key map "\C-c\C-c" 'monroe-eval-expression-at-point)
@@ -395,6 +415,13 @@ at the top of the file."
 	(define-key map "\C-c\C-k" 'monroe-eval-buffer)
 	(define-key map "\C-c\C-n" 'monroe-eval-namespace)
 	(define-key map "\C-c\C-d" 'monroe-describe)
+	(define-key map "\C-c\C-b" 'monroe-interrupt)
+	map))
+
+;; keys for interacting inside Monroe REPL buffer
+(defvar monroe-mode-map
+  (let ((map (copy-keymap comint-mode-map)))
+	(define-key map "\C-c\C-c" 'monroe-interrupt)
 	map))
 
 ;;; rest
