@@ -50,9 +50,14 @@ Then, in Emacs:
 
 <kbd>M-x monroe [RET]</kbd>
 
-and follow the questions about nREPL server location and port.
+and follow the question about nREPL server location and port.
 
 ## Keys and shortcuts
+
+### Monroe shortcuts for code buffer
+
+These shortcuts are valid from code buffer, where you edit Clojure
+code (where *monroe-interaction-mode* is activated).
 
 Keys                | Description
 --------------------|----------------------------
@@ -61,6 +66,16 @@ Keys                | Description
 <kbd>C-c C-k</kbd>  | Evaluate buffer.
 <kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 <kbd>C-c C-n</kbd>  | Evaluate namespace.
+<kbd>C-c C-b</kbd>  | Interrupt running job.
+
+### Monroe shortcuts for REPL buffer
+
+These shortcuts are valid in REPL buffer; also, most of the standard
+*comint-mode* shortcuts should work without problems.
+
+Keys                | Description
+------------------------------------------------
+<kbd>C-c C-c</kbd>  | Interrupt running job.
 
 ## Bug reports & patches
 

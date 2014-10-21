@@ -435,10 +435,7 @@ at the top of the file."
 
   ;; a hack to keep comint happy
   (unless (comint-check-proc (current-buffer))
-	(let ((fake-proc
-		   (condition-case nil
-			   (start-process "monroe" (current-buffer) nil)
-			 (file-error (start-process "monroe" (current-buffer) nil)))))
+	(let ((fake-proc (start-process "monroe" (current-buffer) nil)))
 	  (set-process-query-on-exit-flag fake-proc nil)
 	  (insert (format ";; Monroe nREPL %s\n" monroe-version))
 	  (set-marker (process-mark fake-proc) (point))
