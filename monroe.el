@@ -429,7 +429,12 @@ at the top of the file."
 ;;; rest
 
 (define-derived-mode monroe-mode comint-mode "Monroe nREPL"
-  "Major mode for evaluating commands over nREPL."
+  "Major mode for evaluating commands over nREPL.
+
+The following keys are available in `monroe-mode':
+
+  \\{monroe-mode-map}"
+
   :syntax-table lisp-mode-syntax-table
   (setq comint-prompt-regexp monroe-prompt-regexp)
   (setq comint-input-sender 'monroe-input-sender-with-history)
@@ -450,7 +455,12 @@ at the top of the file."
 
 ;;;###autoload
 (define-minor-mode monroe-interaction-mode
-  "Minor mode for Monroe interaction from a Clojure buffer."
+  "Minor mode for Monroe interaction from a Clojure buffer.
+
+The following keys are available in `monroe-interaction-mode`:
+
+  \\{monroe-interaction-mode}"
+
   nil " Monroe" monroe-interaction-mode-map)
 
 ;;;###autoload
