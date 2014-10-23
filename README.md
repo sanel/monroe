@@ -33,9 +33,15 @@ Make sure you have
 [clojure-mode.el](https://github.com/clojure-emacs/clojure-mode/blob/master/clojure-mode.el)
 installed first.
 
-Download Monroe release (or **monroe.el** file directly from this
-repository) and put in folder where Emacs can access it (usually
-*$HOME/.emacs.d* or any folder listed in Emacs *load-path* variable).
+Download Monroe official release or **monroe.el** file from this
+repository, if you would like to have bleeding edge code, and put it
+in folder where Emacs can access it (usually *$HOME/.emacs.d* or any
+folder listed in Emacs *load-path* variable).
+
+Alternatively, you can also download it from
+[MELPA](http://melpa.org/) archive with command:
+
+<kbd>M-x package-install [RET] monroe [RET]</kbd>
 
 In your
 [Emacs init file](https://www.gnu.org/software/emacs/manual/html_node/emacs/Init-File.html),
