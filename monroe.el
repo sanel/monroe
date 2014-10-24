@@ -113,11 +113,10 @@ to the one used on nrepl side.")
 	(string-to-number (match-string 1)))
    ((looking-at "\\([0-9]+\\):")
 	(goto-char (match-end 0))
-	(let ((start (point))
-		  (end (byte-to-position (+ (position-bytes (point)) (string-to-number (match-string 1))))))
-	  (when (and start end)
-		(goto-char end)
-	    (buffer-substring-no-properties start end))))
+	(let* ((start (point))
+		   (end (byte-to-position (+ (position-bytes start) (string-to-number (match-string 1))))))
+	  (goto-char end)
+	  (buffer-substring-no-properties start end)))
    ((looking-at "l")
 	(goto-char (match-end 0))
 	(let (result item)
@@ -289,12 +288,18 @@ monroe-repl-buffer."
   (with-current-buffer (process-buffer process)
 	(goto-char (point-max))
 	(insert string)
-	;; Wait until receive the end of the message. Idea stolen from Cider.
-	(when (eq ?e (aref string (1- (length string))))
-	  (unless (accept-process-output process 0.01)
-		(while (> (buffer-size) 1)
-		  (dolist (response (monroe-net-decode))
-			(monroe-dispatch response)))))))
+	;; Stolen from Cider. Assure we have end of the message so decoding can work;
+	;; to make sure we are at the real end (session id can contain 'e' character), we call
+	;; 'accept-process-output' once more.
+	;;
+	;; This 'ignore-errors' is a hard hack here since 'accept-process-output' will call filter
+	;; which will be this function causing Emacs to hit max stack size limit.
+	(ignore-errors
+	  (when (eq ?e (aref string (- (length string) 1)))
+		(unless (accept-process-output process 0.01)
+		  (while (> (buffer-size) 1)
+			(dolist (response (monroe-net-decode))
+			  (monroe-dispatch response))))))))
 
 (defun monroe-new-session-handler (process)
   "Returns callback that is called when new connection is established."
