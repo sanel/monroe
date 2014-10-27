@@ -29,19 +29,23 @@ On other hand, Monroe is not:
 
 ## Installation
 
-Make sure you have
-[clojure-mode.el](https://github.com/clojure-emacs/clojure-mode/blob/master/clojure-mode.el)
-installed first.
+Make sure you have `clojure-mode.el` installed first. You can get it
+from Marmalade repository or directly from
+[here](https://github.com/clojure-emacs/clojure-mode).
 
-Download Monroe official release or **monroe.el** file from this
-repository, if you would like to have bleeding edge code, and put it
-in folder where Emacs can access it (usually *$HOME/.emacs.d* or any
-folder listed in Emacs *load-path* variable).
+Official Monroe releases you can find on
+[releases](https://github.com/sanel/monroe/releases) page or you can
+get it from Marmalade repository of Emacs packages (you are familiar
+with Emacs packages, right?).
 
-Alternatively, you can also download it from
-[MELPA](http://melpa.org/) archive with command:
+Latest (and maybe unstable) code you can always get from this
+repository or MELPA repository of Emacs packages.
 
-<kbd>M-x package-install [RET] monroe [RET]</kbd>
+If you get Monroe by downloading official release or by cloning this
+repository, you can install it by moving `monroe.el` file in
+`$HOME/.emacs.d` folder or any other location listed in Emacs
+`load-path` variable. Installing via Emacs package manager will do
+this automatically.
 
 In your
 [Emacs init file](https://www.gnu.org/software/emacs/manual/html_node/emacs/Init-File.html),
