@@ -28,7 +28,7 @@
 
 ;;; Installation:
 
-;; Just copy it to your load-path and run with:
+;; Copy it to your load-path and run with:
 ;; M-: (require 'monroe)
 
 ;;; Usage:
@@ -476,7 +476,6 @@ connection endpoint."
    (list
 	(read-string (format "Host (default '%s'): " monroe-default-host)
 				 nil nil monroe-default-host)))
-
   (unless (ignore-errors
 			(with-current-buffer (get-buffer-create monroe-repl-buffer)
 			  (prog1
@@ -487,3 +486,5 @@ connection endpoint."
 	(message "Unable to connect to %s." host-and-port)))
 
 (provide 'monroe)
+
+;;; monroe.el ends here
