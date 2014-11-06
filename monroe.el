@@ -4,7 +4,7 @@
 ;;
 ;; Author: Sanel Zukan <sanelz@gmail.com>
 ;; URL: http://www.github.com/sanel/monroe
-;; Version: 0.2.0
+;; Version: 0.3.0
 ;; Keywords: languages, clojure, nrepl, lisp
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -68,7 +68,7 @@ exception. Otherwise will just behave as standard REPL version."
   :type 'boolean
   :group 'monroe)
 
-(defvar monroe-version "0.2.0"
+(defvar monroe-version "0.3.0"
   "The current monroe version.")
 
 (defvar monroe-session nil
@@ -400,6 +400,20 @@ at the top of the file."
 	  (read-string prompt nil nil sym))))
   (monroe-eval-doc symbol))
 
+(defun monroe-load-file (path)
+  "Load file to running process, asking user for alternative path.
+This function, contrary to clojure-mode.el, will not use comint-mode for sending files
+as path can be remote location. For remote paths, use absolute path."
+  (interactive
+   (list
+	(let ((n (buffer-file-name)))
+	  (read-file-name "Load file: " nil nil nil
+					  (and n (file-name-nondirectory n))))))
+  (let ((full-path (convert-standard-filename (expand-file-name path))))
+	(monroe-input-sender
+	 (get-buffer-process monroe-repl-buffer)
+	 (format "(clojure.core/load-file \"%s\")" full-path))))
+
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
   (let (keys)
@@ -421,6 +435,7 @@ at the top of the file."
 	(define-key map "\C-c\C-n" 'monroe-eval-namespace)
 	(define-key map "\C-c\C-d" 'monroe-describe)
 	(define-key map "\C-c\C-b" 'monroe-interrupt)
+	(define-key map "\C-c\C-l" 'monroe-load-file)
 	map))
 
 ;; keys for interacting inside Monroe REPL buffer
