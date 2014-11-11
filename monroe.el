@@ -6,6 +6,7 @@
 ;; URL: http://www.github.com/sanel/monroe
 ;; Version: 0.3.0
 ;; Keywords: languages, clojure, nrepl, lisp
+;; Package-Requires: ((cl-lib "0.5"))
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -37,6 +38,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'comint)
 
 (defgroup monroe nil
@@ -99,7 +101,7 @@ to the one used on nrepl side.")
 ;; stolen from nrepl.el.
 (defmacro monroe-dbind-response (response keys &rest body)
   "Destructure an nREPL response dict."
-  `(let ,(loop for key in keys
+  `(let ,(cl-loop for key in keys
 			   collect `(,key (cdr (assoc ,(format "%s" key) ,response))))
 	 ,@body))
 
@@ -167,7 +169,7 @@ starting with 'd' and ending with 'e'."
 (defun monroe-send-request (request callback)
   "Send request as elisp object and assign callback to
 be called when reply is received."
-  (let* ((id       (number-to-string (incf monroe-requests-counter)))
+  (let* ((id       (number-to-string (cl-incf monroe-requests-counter)))
 		 (message  (append (list "id" id) request))
 		 (bmessage (monroe-encode message)))
 	(puthash id callback monroe-requests)
@@ -319,8 +321,8 @@ monroe-repl-buffer."
 (defun monroe-connect (host-and-port)
   "Connect to remote endpoint using provided hostname and port."
   (let* ((hp   (split-string host-and-port ":"))
-		 (host (monroe-valid-host-string (first hp) "localhost"))
-		 (port (monroe-valid-host-string (second hp) "7888")))
+		 (host (monroe-valid-host-string (cl-first hp) "localhost"))
+		 (port (monroe-valid-host-string (cl-second hp) "7888")))
 	(message "Connecting to nREPL host on '%s:%s'..." host port)
 	(let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
 	  (set-process-filter process 'monroe-net-filter)
