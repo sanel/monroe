@@ -459,6 +459,7 @@ The following keys are available in `monroe-mode':
   (setq comint-prompt-regexp monroe-prompt-regexp)
   (setq comint-input-sender 'monroe-input-sender-with-history)
   (setq mode-line-process '(":%s"))
+  ;(set (make-local-variable 'font-lock-defaults) '(clojure-font-lock-keywords t))
 
   ;; a hack to keep comint happy
   (unless (comint-check-proc (current-buffer))
