@@ -1,6 +1,6 @@
 ;;; monroe.el --- Yet another client for nREPL
 
-;; Copyright (c) 2014 Sanel Zukan
+;; Copyright (c) 2014-2016 Sanel Zukan
 ;;
 ;; Author: Sanel Zukan <sanelz@gmail.com>
 ;; URL: http://www.github.com/sanel/monroe
@@ -316,9 +316,15 @@ monroe-repl-buffer."
 	str
 	default))
 
+(defun monroe-strip-protocol (host)
+  "Check if protocol was given and strip it."
+  (if (string-match "^nrepl://" host)
+    (substring host 8)
+	host))
+
 (defun monroe-connect (host-and-port)
   "Connect to remote endpoint using provided hostname and port."
-  (let* ((hp   (split-string host-and-port ":"))
+  (let* ((hp   (split-string (monroe-strip-protocol host-and-port) ":"))
 		 (host (monroe-valid-host-string (first hp) "localhost"))
 		 (port (monroe-valid-host-string (second hp) "7888")))
 	(message "Connecting to nREPL host on '%s:%s'..." host port)
@@ -499,7 +505,7 @@ connection endpoint."
 				(goto-char (point-max))
 				(monroe-mode)
 				(switch-to-buffer (current-buffer)))))
-	(message "Unable to connect to %s." host-and-port)))
+	(message "Unable to connect to %s" host-and-port)))
 
 (provide 'monroe)
 
