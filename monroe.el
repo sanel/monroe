@@ -389,9 +389,15 @@ at the top of the file."
   "When error is happened, try to get as much details as possible from last stracktrace."
   (monroe-input-sender
    (get-buffer-process monroe-repl-buffer)
-   "(if-let [pst+ (resolve 'clj-stacktrace.repl/pst)]
-      (pst+ *e)
-      (clojure.stacktrace/print-stack-trace *e))"))
+   ;; Try to differentiate between clojure and clojurescript using simple '(= 0.0 0)' hack. In
+   ;; clojure it will return false but in clojurescript true, because, well, javascript is so well designed...
+   ;;
+   ;; Also, rely on 'clojure.stacktrace/print-stack-trace' so we can work on clojure 1.2 version.
+   "(if-not (= 0.0 0)
+      (if-let [pst+ (resolve 'clojure.repl/pst)]
+        (pst+ *e)
+        (clojure.stacktrace/print-stack-trace *e))
+      (cljs.repl/pst *e))"))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
