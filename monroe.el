@@ -68,6 +68,13 @@ exception. Otherwise will just behave as standard REPL version."
   :type 'boolean
   :group 'monroe)
 
+(defcustom monroe-old-style-stacktraces nil
+  "If set to true, Monroe will try to emit old style Clojure stacktraces
+using 'clojure.stacktrace/print-stack-trace'. This will work on older Clojure versions (e.g. 1.2)
+but will NOT work on ClojureScript. This option assumes 'monroe-detail-stacktraces' is true."
+  :type 'boolean
+  :group 'monroe)
+
 (defvar monroe-version "0.3.0"
   "The current monroe version.")
 
@@ -389,15 +396,9 @@ at the top of the file."
   "When error is happened, try to get as much details as possible from last stracktrace."
   (monroe-input-sender
    (get-buffer-process monroe-repl-buffer)
-   ;; Try to differentiate between clojure and clojurescript using simple '(= 0.0 0)' hack. In
-   ;; clojure it will return false but in clojurescript true, because, well, javascript is so well designed...
-   ;;
-   ;; Also, rely on 'clojure.stacktrace/print-stack-trace' so we can work on clojure 1.2 version.
-   "(if-not (= 0.0 0)
-      (if-let [pst+ (resolve 'clojure.repl/pst)]
-        (pst+ *e)
-        (clojure.stacktrace/print-stack-trace *e))
-      (cljs.repl/pst *e))"))
+   (if monroe-old-style-stacktraces
+	 "(clojure.stacktrace/print-stack-trace *e)"
+	 "(clojure.repl/pst *e)")))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
