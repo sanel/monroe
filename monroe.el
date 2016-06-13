@@ -115,7 +115,7 @@ to the one used on nrepl side.")
 (defun monroe-bdecode-buffer ()
   "Decode a bencoded string in the current buffer starting at point."
   (cond
-   ((looking-at "i\\([0-9]+\\)e")
+   ((looking-at "i\\([-0-9]+\\)e")
 	(goto-char (match-end 0))
 	(string-to-number (match-string 1)))
    ((looking-at "\\([0-9]+\\):")
