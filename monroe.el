@@ -87,6 +87,9 @@ but will NOT work on ClojureScript. This option assumes 'monroe-detail-stacktrac
 (defvar monroe-requests-counter 0
   "Serial number for message.")
 
+(defvar monroe-custom-handlers (make-hash-table :test 'equal)
+  "Map of handlers for custom ops.")
+
 (defvar monroe-repl-buffer "*monroe*"
   "Name of nREPL buffer.")
 
@@ -271,12 +274,13 @@ history purposes."
   (kill-buffer (process-buffer process))
   (monroe-disconnect))
 
-(defun monroe-dispatch (response)
-  "Find response id and call associated callback."
-  (monroe-dbind-response response (id)
-	(let ((callback (gethash id monroe-requests)))
-	  (when callback
-		(funcall callback response)))))
+(defun monroe-dispatch (msg)
+  "Find associated callback for a message by id or by op."
+  (monroe-dbind-response msg (id op)
+    (let ((callback (or (gethash id monroe-requests)
+                        (gethash op monroe-custom-handlers))))
+      (when callback
+        (funcall callback msg)))))
 
 (defun monroe-net-decode ()
   "Decode the data in the current buffer and remove the processed data from the
