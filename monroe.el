@@ -1,3 +1,4 @@
+;;; -*- indent-tabs-mode: nil -*-
 ;;; monroe.el --- Yet another client for nREPL
 
 ;; Copyright (c) 2014-2016 Sanel Zukan
@@ -110,8 +111,8 @@ to the one used on nrepl side.")
 (defmacro monroe-dbind-response (response keys &rest body)
   "Destructure an nREPL response dict."
   `(let ,(loop for key in keys
-			   collect `(,key (cdr (assoc ,(format "%s" key) ,response))))
-	 ,@body))
+               collect `(,key (cdr (assoc ,(format "%s" key) ,response))))
+     ,@body))
 
 ;;; Bencode
 ;;; Stolen from nrepl.el which is adapted from http://www.emacswiki.org/emacs-en/bencode.el
@@ -119,56 +120,56 @@ to the one used on nrepl side.")
   "Decode a bencoded string in the current buffer starting at point."
   (cond
    ((looking-at "i\\([-0-9]+\\)e")
-	(goto-char (match-end 0))
-	(string-to-number (match-string 1)))
+    (goto-char (match-end 0))
+    (string-to-number (match-string 1)))
    ((looking-at "\\([0-9]+\\):")
-	(goto-char (match-end 0))
-	(let* ((start (point))
-		   (end (byte-to-position (+ (position-bytes start) (string-to-number (match-string 1))))))
-	  (goto-char end)
-	  (buffer-substring-no-properties start end)))
+    (goto-char (match-end 0))
+    (let* ((start (point))
+           (end (byte-to-position (+ (position-bytes start) (string-to-number (match-string 1))))))
+      (goto-char end)
+      (buffer-substring-no-properties start end)))
    ((looking-at "l")
-	(goto-char (match-end 0))
-	(let (result item)
-	  (while (setq item (monroe-bdecode-buffer))
-		(setq result (cons item result)))
-	  (nreverse result)))
+    (goto-char (match-end 0))
+    (let (result item)
+      (while (setq item (monroe-bdecode-buffer))
+        (setq result (cons item result)))
+      (nreverse result)))
    ((looking-at "d")
-	(goto-char (match-end 0))
-	(let (dict key item)
-	  (while (setq item (monroe-bdecode-buffer))
-		(if key
-			(setq dict (cons (cons key item) dict)
-				  key nil)
-		  (unless (stringp item)
-			(error "Dictionary keys have to be strings: %s" item))
-		  (setq key item)))
-	  (cons 'dict (nreverse dict))))
+    (goto-char (match-end 0))
+    (let (dict key item)
+      (while (setq item (monroe-bdecode-buffer))
+        (if key
+            (setq dict (cons (cons key item) dict)
+                  key nil)
+          (unless (stringp item)
+            (error "Dictionary keys have to be strings: %s" item))
+          (setq key item)))
+      (cons 'dict (nreverse dict))))
    ((looking-at "e")
-	(goto-char (match-end 0))
-	nil)
+    (goto-char (match-end 0))
+    nil)
    (t
-	(error "Cannot decode object: %d" (point)))))
+    (error "Cannot decode object: %d" (point)))))
 
 (defun monroe-encode (message)
   "Encode message to nrepl format. The message format is
 'd<key-len>:key<val-len>:value<key-len>:key<val-len>:valuee', where the message is
 starting with 'd' and ending with 'e'."
   (concat "d"
-	(apply 'concat
-	  (mapcar (lambda (str)
-				(format "%d:%s" (string-bytes str) str))
-			  message))
-	"e"))
+    (apply 'concat
+      (mapcar (lambda (str)
+                (format "%d:%s" (string-bytes str) str))
+              message))
+    "e"))
 
 (defun monroe-decode (str)
   "Decode message using temporary buffer."
   (with-temp-buffer
-	(save-excursion (insert str))
-	(let ((result '()))
-	  (while (not (eobp))
-		(setq result (cons (monroe-bdecode-buffer) result)))
-	  (nreverse result))))
+    (save-excursion (insert str))
+    (let ((result '()))
+      (while (not (eobp))
+        (setq result (cons (monroe-bdecode-buffer) result)))
+      (nreverse result))))
 
 (defun monroe-write-message (process message)
   "Send message to given process."
@@ -178,10 +179,10 @@ starting with 'd' and ending with 'e'."
   "Send request as elisp object and assign callback to
 be called when reply is received."
   (let* ((id       (number-to-string (incf monroe-requests-counter)))
-		 (message  (append (list "id" id) request))
-		 (bmessage (monroe-encode message)))
-	(puthash id callback monroe-requests)
-	(monroe-write-message "*monroe-connection*" bmessage)))
+         (message  (append (list "id" id) request))
+         (bmessage (monroe-encode message)))
+    (puthash id callback monroe-requests)
+    (monroe-write-message "*monroe-connection*" bmessage)))
 
 (defun monroe-clear-request-table ()
   "Erases current request table."
@@ -191,7 +192,7 @@ be called when reply is received."
 (defun monroe-current-session ()
   "Returns current session id."
   (with-current-buffer "*monroe-connection*"
-	monroe-session))
+    monroe-session))
 
 ;;; nrepl messages we knows about
 
@@ -207,50 +208,50 @@ the operations supported by an nREPL endpoint."
 (defun monroe-send-eval-string (str callback)
   "Send code for evaluation on given namespace."
   (monroe-send-request (list "op" "eval"
-							 "session" (monroe-current-session)
-							 "code" str)
-					   callback))
+                             "session" (monroe-current-session)
+                             "code" str)
+                       callback))
 
 (defun monroe-send-stdin (str callback)
   "Send stdin value."
   (monroe-send-request (list "op" "stdin"
-							 "session" (monroe-current-session)
-							 "stdin" str)
-					   callback))
+                             "session" (monroe-current-session)
+                             "stdin" str)
+                       callback))
 
 (defun monroe-send-interrupt (request-id callback)
   "Send interrupt for pending requests."
   (monroe-send-request (list "op" "interrupt"
-							 "session" (monroe-current-session)
-							 "interrupt-id" request-id)
-					   callback))
+                             "session" (monroe-current-session)
+                             "interrupt-id" request-id)
+                       callback))
 
 ;;; code
 
 (defun monroe-make-response-handler ()
   "Returns a function that will be called when event is received."
    (lambda (response)
-	 (monroe-dbind-response response (id ns value err out ex root-ex status)
-	   (let ((output (concat err out
-							 (if value
-							   (concat value "\n"))))
-			 (process (get-buffer-process monroe-repl-buffer)))
-		 ;; update namespace if needed
-		 (if ns (setq monroe-buffer-ns ns))
-		 (comint-output-filter process output)
-		 ;; now handle status
-		 (when status
-		   (when (and monroe-detail-stacktraces (member "eval-error" status))
-			 (monroe-get-stacktrace root-ex ex))
-		   (when (member "interrupted" status)
-			 (message "Evaluation interrupted."))
-		   (when (member "need-input" status)
-			 (monroe-handle-input))
-		   (when (member "done" status)
-			 (remhash id monroe-requests)))
-		 ;; show prompt only when no output is given in any of received vars
-		 (unless (or err out value root-ex ex)
-		   (comint-output-filter process (format monroe-repl-prompt-format monroe-buffer-ns)))))))
+     (monroe-dbind-response response (id ns value err out ex root-ex status)
+       (let ((output (concat err out
+                             (if value
+                               (concat value "\n"))))
+             (process (get-buffer-process monroe-repl-buffer)))
+         ;; update namespace if needed
+         (if ns (setq monroe-buffer-ns ns))
+         (comint-output-filter process output)
+         ;; now handle status
+         (when status
+           (when (and monroe-detail-stacktraces (member "eval-error" status))
+             (monroe-get-stacktrace root-ex ex))
+           (when (member "interrupted" status)
+             (message "Evaluation interrupted."))
+           (when (member "need-input" status)
+             (monroe-handle-input))
+           (when (member "done" status)
+             (remhash id monroe-requests)))
+         ;; show prompt only when no output is given in any of received vars
+         (unless (or err out value root-ex ex)
+           (comint-output-filter process (format monroe-repl-prompt-format monroe-buffer-ns)))))))
 
 (defun monroe-input-sender (proc input)
   "Called when user enter data in REPL and when something is received in."
@@ -286,78 +287,78 @@ history purposes."
   "Decode the data in the current buffer and remove the processed data from the
 buffer if the decode successful."
   (let* ((start   (point-min))
-		 (end     (point-max))
-		 (data    (buffer-substring start end))
-		 (decoded (monroe-decode data)))
-	(delete-region start end)
-	decoded))
+         (end     (point-max))
+         (data    (buffer-substring start end))
+         (decoded (monroe-decode data)))
+    (delete-region start end)
+    decoded))
 
 (defun monroe-net-filter (process string)
   "Called when the new message is received. Process will redirect
 all received output to this function; it will decode it and put in
 monroe-repl-buffer."
   (with-current-buffer (process-buffer process)
-	(goto-char (point-max))
-	(insert string)
-	;; Stolen from Cider. Assure we have end of the message so decoding can work;
-	;; to make sure we are at the real end (session id can contain 'e' character), we call
-	;; 'accept-process-output' once more.
-	;;
-	;; This 'ignore-errors' is a hard hack here since 'accept-process-output' will call filter
-	;; which will be this function causing Emacs to hit max stack size limit.
-	(ignore-errors
-	  (when (eq ?e (aref string (- (length string) 1)))
-		(unless (accept-process-output process 0.01)
-		  (while (> (buffer-size) 1)
-			(dolist (response (monroe-net-decode))
-			  (monroe-dispatch response))))))))
+    (goto-char (point-max))
+    (insert string)
+    ;; Stolen from Cider. Assure we have end of the message so decoding can work;
+    ;; to make sure we are at the real end (session id can contain 'e' character), we call
+    ;; 'accept-process-output' once more.
+    ;;
+    ;; This 'ignore-errors' is a hard hack here since 'accept-process-output' will call filter
+    ;; which will be this function causing Emacs to hit max stack size limit.
+    (ignore-errors
+      (when (eq ?e (aref string (- (length string) 1)))
+        (unless (accept-process-output process 0.01)
+          (while (> (buffer-size) 1)
+            (dolist (response (monroe-net-decode))
+              (monroe-dispatch response))))))))
 
 (defun monroe-new-session-handler (process)
   "Returns callback that is called when new connection is established."
   (lambda (response)
-	(monroe-dbind-response response (id new-session)
-	  (when new-session
-		(message "Connected.")
-		(setq monroe-session new-session)
-		(remhash id monroe-requests)))))
+    (monroe-dbind-response response (id new-session)
+      (when new-session
+        (message "Connected.")
+        (setq monroe-session new-session)
+        (remhash id monroe-requests)))))
 
 (defun monroe-valid-host-string (str default)
   "Used for getting valid string for host/port part."
   (if (and str (not (string= "" str)))
-	str
-	default))
+    str
+    default))
 
 (defun monroe-strip-protocol (host)
   "Check if protocol was given and strip it."
   (if (string-match "^nrepl://" host)
     (substring host 8)
-	host))
+    host))
 
 (defun monroe-connect (host-and-port)
   "Connect to remote endpoint using provided hostname and port."
   (let* ((hp   (split-string (monroe-strip-protocol host-and-port) ":"))
-		 (host (monroe-valid-host-string (first hp) "localhost"))
-		 (port (monroe-valid-host-string (second hp) "7888")))
-	(message "Connecting to nREPL host on '%s:%s'..." host port)
-	(let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
-	  (set-process-filter process 'monroe-net-filter)
-	  (set-process-sentinel process 'monroe-sentinel)
-	  (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
-	  (monroe-send-hello (monroe-new-session-handler (process-buffer process)))
-	  process)))
+         (host (monroe-valid-host-string (first hp) "localhost"))
+         (port (monroe-valid-host-string (second hp) "7888")))
+    (message "Connecting to nREPL host on '%s:%s'..." host port)
+    (let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
+      (set-process-filter process 'monroe-net-filter)
+      (set-process-sentinel process 'monroe-sentinel)
+      (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
+      (monroe-send-hello (monroe-new-session-handler (process-buffer process)))
+      process)))
 
 (defun monroe-disconnect ()
   "Disconnect from current nrepl connection. Calling this function directly
 will force connection closing, which will as result call '(monroe-sentinel)'."
   (monroe-clear-request-table)
   (let ((delete-process-safe (lambda (p)
-							   (when (and p (process-live-p p))
-								 (delete-process p))))
-		;; 'monroe-repl-buffer' process is actually 'fake-proc'
-		(proc1 (get-buffer-process monroe-repl-buffer))
-		(proc2 (get-buffer-process "*monroe-connection*")))
-	(funcall delete-process-safe proc1)
-	(funcall delete-process-safe proc2)))
+                               (when (and p (process-live-p p))
+                                 (delete-process p))))
+        ;; 'monroe-repl-buffer' process is actually 'fake-proc'
+        (proc1 (get-buffer-process monroe-repl-buffer))
+        (proc2 (get-buffer-process "*monroe-connection*")))
+    (funcall delete-process-safe proc1)
+    (funcall delete-process-safe proc2)))
 
 ;;; keys
 
@@ -375,10 +376,10 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
   "Figure out expression at point and send it for evaluation."
   (interactive)
   (save-excursion
-	(end-of-defun)
-	(let ((end (point)))
-	  (beginning-of-defun)
-	  (monroe-eval-region (point) end))))
+    (end-of-defun)
+    (let ((end (point)))
+      (beginning-of-defun)
+      (monroe-eval-region (point) end))))
 
 (defun monroe-eval-namespace ()
   "Tries to evaluate Clojure ns form. It does this by matching first
@@ -387,10 +388,10 @@ that is 100% accurate, but Clojure practice is to keep ns forms always
 at the top of the file."
   (interactive)
   (when (and (fboundp 'clojure-find-ns)
-			 (funcall 'clojure-find-ns))
-	(save-excursion
-	  (goto-char (match-beginning 0))
-	  (monroe-eval-expression-at-point))))
+             (funcall 'clojure-find-ns))
+    (save-excursion
+      (goto-char (match-beginning 0))
+      (monroe-eval-expression-at-point))))
 
 (defun monroe-eval-doc (symbol)
   "Internal function to actually ask for symbol documentation via nrepl protocol."
@@ -401,20 +402,20 @@ at the top of the file."
   (monroe-input-sender
    (get-buffer-process monroe-repl-buffer)
    (if monroe-old-style-stacktraces
-	 "(clojure.stacktrace/print-stack-trace *e)"
-	 "(clojure.repl/pst *e)")))
+     "(clojure.stacktrace/print-stack-trace *e)"
+     "(clojure.repl/pst *e)")))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
   (interactive
    (list
-	(let* ((sym (thing-at-point 'symbol))
-		   (sym (if sym (substring-no-properties sym)))
-		   (prompt "Describe")
-		   (prompt (if sym
-				     (format "%s (default %s): " prompt sym)
-					 (concat prompt ": "))))
-	  (read-string prompt nil nil sym))))
+    (let* ((sym (thing-at-point 'symbol))
+           (sym (if sym (substring-no-properties sym)))
+           (prompt "Describe")
+           (prompt (if sym
+                     (format "%s (default %s): " prompt sym)
+                     (concat prompt ": "))))
+      (read-string prompt nil nil sym))))
   (monroe-eval-doc symbol))
 
 (defun monroe-load-file (path)
@@ -423,45 +424,45 @@ This function, contrary to clojure-mode.el, will not use comint-mode for sending
 as path can be remote location. For remote paths, use absolute path."
   (interactive
    (list
-	(let ((n (buffer-file-name)))
-	  (read-file-name "Load file: " nil nil nil
-					  (and n (file-name-nondirectory n))))))
+    (let ((n (buffer-file-name)))
+      (read-file-name "Load file: " nil nil nil
+                      (and n (file-name-nondirectory n))))))
   (let ((full-path (convert-standard-filename (expand-file-name path))))
-	(monroe-input-sender
-	 (get-buffer-process monroe-repl-buffer)
-	 (format "(clojure.core/load-file \"%s\")" full-path))))
+    (monroe-input-sender
+     (get-buffer-process monroe-repl-buffer)
+     (format "(clojure.core/load-file \"%s\")" full-path))))
 
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
   (let (keys)
-	(maphash (lambda (k v) (setq keys (cons k keys))) htable)
-	keys))
+    (maphash (lambda (k v) (setq keys (cons k keys))) htable)
+    keys))
 
 (defun monroe-interrupt ()
   "Send interrupt to all pending requests."
   (interactive)
   (dolist (id (monroe-extract-keys monroe-requests))
-	(monroe-send-interrupt id (monroe-make-response-handler))))
+    (monroe-send-interrupt id (monroe-make-response-handler))))
 
 ;; keys for interacting with Monroe REPL buffer
 (defvar monroe-interaction-mode-map
   (let ((map (make-sparse-keymap)))
-	(define-key map "\C-c\C-c" 'monroe-eval-expression-at-point)
-	(define-key map "\C-c\C-r" 'monroe-eval-region)
-	(define-key map "\C-c\C-k" 'monroe-eval-buffer)
-	(define-key map "\C-c\C-n" 'monroe-eval-namespace)
-	(define-key map "\C-c\C-d" 'monroe-describe)
-	(define-key map "\C-c\C-b" 'monroe-interrupt)
-	(define-key map "\C-c\C-l" 'monroe-load-file)
-	map))
+    (define-key map "\C-c\C-c" 'monroe-eval-expression-at-point)
+    (define-key map "\C-c\C-r" 'monroe-eval-region)
+    (define-key map "\C-c\C-k" 'monroe-eval-buffer)
+    (define-key map "\C-c\C-n" 'monroe-eval-namespace)
+    (define-key map "\C-c\C-d" 'monroe-describe)
+    (define-key map "\C-c\C-b" 'monroe-interrupt)
+    (define-key map "\C-c\C-l" 'monroe-load-file)
+    map))
 
 ;; keys for interacting inside Monroe REPL buffer
 (defvar monroe-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map comint-mode-map)
-	(define-key map "\C-c\C-d" 'monroe-describe)
-	(define-key map "\C-c\C-c" 'monroe-interrupt)
-	map))
+    (define-key map "\C-c\C-d" 'monroe-describe)
+    (define-key map "\C-c\C-c" 'monroe-interrupt)
+    map))
 
 ;;; rest
 
@@ -480,11 +481,11 @@ The following keys are available in `monroe-mode':
 
   ;; a hack to keep comint happy
   (unless (comint-check-proc (current-buffer))
-	(let ((fake-proc (start-process "monroe" (current-buffer) nil)))
-	  (set-process-query-on-exit-flag fake-proc nil)
-	  (insert (format ";; Monroe nREPL %s\n" monroe-version))
-	  (set-marker (process-mark fake-proc) (point))
-	  (comint-output-filter fake-proc (format monroe-repl-prompt-format monroe-buffer-ns)))))
+    (let ((fake-proc (start-process "monroe" (current-buffer) nil)))
+      (set-process-query-on-exit-flag fake-proc nil)
+      (insert (format ";; Monroe nREPL %s\n" monroe-version))
+      (set-marker (process-mark fake-proc) (point))
+      (comint-output-filter fake-proc (format monroe-repl-prompt-format monroe-buffer-ns)))))
 
 ;;; user command
 
@@ -507,16 +508,16 @@ The following keys are available in `monroe-interaction-mode`:
 connection endpoint."
   (interactive
    (list
-	(read-string (format "Host (default '%s'): " monroe-default-host)
-				 nil nil monroe-default-host)))
+    (read-string (format "Host (default '%s'): " monroe-default-host)
+                 nil nil monroe-default-host)))
   (unless (ignore-errors
-			(with-current-buffer (get-buffer-create monroe-repl-buffer)
-			  (prog1
-				  (monroe-connect host-and-port)
-				(goto-char (point-max))
-				(monroe-mode)
-				(switch-to-buffer (current-buffer)))))
-	(message "Unable to connect to %s" host-and-port)))
+            (with-current-buffer (get-buffer-create monroe-repl-buffer)
+              (prog1
+                  (monroe-connect host-and-port)
+                (goto-char (point-max))
+                (monroe-mode)
+                (switch-to-buffer (current-buffer)))))
+    (message "Unable to connect to %s" host-and-port)))
 
 (provide 'monroe)
 
