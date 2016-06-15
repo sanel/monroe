@@ -158,7 +158,8 @@ starting with 'd' and ending with 'e'."
   (concat "d"
     (apply 'concat
       (mapcar (lambda (str)
-                (format "%d:%s" (string-bytes str) str))
+                (let ((s (if str str "")))
+                  (format "%d:%s" (string-bytes s) s)))
               message))
     "e"))
 
