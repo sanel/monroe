@@ -5,7 +5,7 @@
 ;;
 ;; Author: Sanel Zukan <sanelz@gmail.com>
 ;; URL: http://www.github.com/sanel/monroe
-;; Version: 0.3.0
+;; Version: 0.3.1
 ;; Keywords: languages, clojure, nrepl, lisp
 
 ;; This program is free software: you can redistribute it and/or modify
