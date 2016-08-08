@@ -39,6 +39,8 @@
 ;;; Code:
 
 (require 'comint)
+(eval-when-compile
+  (require 'cl))
 
 (defgroup monroe nil
   "Interaction with the nREPL Server."
