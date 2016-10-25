@@ -341,8 +341,9 @@ monroe-repl-buffer."
   "Connect to remote endpoint using provided hostname and port."
   (let* ((hp   (split-string (monroe-strip-protocol host-and-port) ":"))
          (host (monroe-valid-host-string (first hp) "localhost"))
-         (port (monroe-valid-host-string (second hp) "7888")))
-    (message "Connecting to nREPL host on '%s:%s'..." host port)
+         (port (string-to-number
+                (monroe-valid-host-string (second hp) "7888"))))
+    (message "Connecting to nREPL host on '%s:%d'..." host port)
     (let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
       (set-process-filter process 'monroe-net-filter)
       (set-process-sentinel process 'monroe-sentinel)
