@@ -401,6 +401,30 @@ at the top of the file."
   "Internal function to actually ask for symbol documentation via nrepl protocol."
   (monroe-input-sender (get-buffer-process monroe-repl-buffer) (format "(clojure.repl/doc %s)" symbol)))
 
+(defun monroe-jump-find-file (file)
+  "Internal function to find a file on the disk or inside a jar."
+  (if (not (string-match "^jar:file:\\(.+\\)!\\(.+\\)" file))
+      (find-file (substring file 5))
+    (let ((jar (match-string 1 file))
+          (clj (match-string 2 file)))
+      (find-file jar)
+      (search-forward-regexp (concat " " (substring clj 1) "$"))
+      (archive-extract))))
+
+(defun monroe-eval-jump (var)
+  "Internal function to actually ask for var location via nrepl protocol."
+  (monroe-send-eval-string
+   (format "((juxt (comp str clojure.java.io/resource :file) :line :column)
+             (meta (var %s)))" var)
+   (lambda (response)
+     (let ((value (cdr (assoc "value" response))))
+       (when value
+         (destructuring-bind (file line column)
+             (append (car (read-from-string value)) nil)
+           (ring-insert find-tag-marker-ring (point-marker))
+           (monroe-jump-find-file file)
+           (goto-line line)))))))
+
 (defun monroe-get-stacktrace (root-ex ex)
   "When error is happened, try to get as much details as possible from last stracktrace."
   (monroe-input-sender
@@ -436,6 +460,21 @@ as path can be remote location. For remote paths, use absolute path."
      (get-buffer-process monroe-repl-buffer)
      (format "(clojure.core/load-file \"%s\")" full-path))))
 
+(defun monroe-jump (var)
+  "Jump to definition of var at point."
+  (interactive
+   (list (if (thing-at-point 'symbol)
+             (substring-no-properties (thing-at-point 'symbol))
+           (read-string "Find var: "))))
+  (monroe-eval-jump var))
+
+(defun monroe-jump-pop ()
+  "Return point to the position and buffer before running `monroe-jump'."
+  (interactive)
+  (let ((marker (pop find-tag-marker-ring)))
+    (switch-to-buffer (marker-buffer marker))
+    (goto-char (marker-position marker))))
+
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
   (let (keys)
@@ -458,6 +497,8 @@ as path can be remote location. For remote paths, use absolute path."
     (define-key map "\C-c\C-d" 'monroe-describe)
     (define-key map "\C-c\C-b" 'monroe-interrupt)
     (define-key map "\C-c\C-l" 'monroe-load-file)
+    (define-key map "\M-."      'monroe-jump)
+    (define-key map "\M-,"      'monroe-jump-pop)
     map))
 
 ;; keys for interacting inside Monroe REPL buffer
@@ -466,6 +507,8 @@ as path can be remote location. For remote paths, use absolute path."
     (set-keymap-parent map comint-mode-map)
     (define-key map "\C-c\C-d" 'monroe-describe)
     (define-key map "\C-c\C-c" 'monroe-interrupt)
+    (define-key map "\M-."     'monroe-jump)
+    (define-key map "\M-,"     'monroe-jump-pop)
     map))
 
 ;;; rest
