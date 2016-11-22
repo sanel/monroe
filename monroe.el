@@ -405,11 +405,16 @@ at the top of the file."
   "Internal function to find a file on the disk or inside a jar."
   (if (not (string-match "^jar:file:\\(.+\\)!\\(.+\\)" file))
       (find-file (substring file 5))
-    (let ((jar (match-string 1 file))
-          (clj (match-string 2 file)))
+    (let* ((jar (match-string 1 file))
+           (clj (match-string 2 file))
+           (already-open (get-buffer (file-name-nondirectory jar))))
       (find-file jar)
+      (goto-char (point-min))
       (search-forward-regexp (concat " " (substring clj 1) "$"))
-      (archive-extract))))
+      (let ((archive-buffer (current-buffer)))
+        (archive-extract)
+        (when (not already-open)
+          (kill-buffer archive-buffer))))))
 
 (defun monroe-eval-jump (var)
   "Internal function to actually ask for var location via nrepl protocol."
