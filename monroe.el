@@ -414,8 +414,8 @@ at the top of the file."
 (defun monroe-eval-jump (var)
   "Internal function to actually ask for var location via nrepl protocol."
   (monroe-send-eval-string
-   (format "((juxt (comp str clojure.java.io/resource :file) :line :column)
-             (meta (var %s)))" var)
+   (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line :column)
+                  (meta (var ,(intern var)))))
    (lambda (response)
      (let ((value (cdr (assoc "value" response))))
        (when value
