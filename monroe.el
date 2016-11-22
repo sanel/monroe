@@ -426,7 +426,6 @@ at the top of the file."
        (when value
          (destructuring-bind (file line column)
              (append (car (read-from-string value)) nil)
-           (ring-insert find-tag-marker-ring (point-marker))
            (monroe-jump-find-file file)
            (goto-line line)))))))
 
@@ -471,6 +470,7 @@ as path can be remote location. For remote paths, use absolute path."
    (list (if (thing-at-point 'symbol)
              (substring-no-properties (thing-at-point 'symbol))
            (read-string "Find var: "))))
+  (ring-insert find-tag-marker-ring (point-marker))
   (monroe-eval-jump var))
 
 (defun monroe-jump-pop ()
