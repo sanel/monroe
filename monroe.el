@@ -401,6 +401,8 @@ at the top of the file."
   "Internal function to actually ask for symbol documentation via nrepl protocol."
   (monroe-input-sender (get-buffer-process monroe-repl-buffer) (format "(clojure.repl/doc %s)" symbol)))
 
+(eval-when-compile '(require 'arc-mode))
+
 (defun monroe-jump-find-file (file)
   "Internal function to find a file on the disk or inside a jar."
   (if (not (string-match "^jar:file:\\(.+\\)!\\(.+\\)" file))
@@ -427,7 +429,8 @@ at the top of the file."
          (destructuring-bind (file line column)
              (append (car (read-from-string value)) nil)
            (monroe-jump-find-file file)
-           (goto-line line)))))))
+           (goto-char (point-min))
+           (forward-line line)))))))
 
 (defun monroe-get-stacktrace (root-ex ex)
   "When error is happened, try to get as much details as possible from last stracktrace."
