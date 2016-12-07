@@ -403,6 +403,11 @@ at the top of the file."
 
 (eval-when-compile '(require 'arc-mode))
 
+(defvar monroe-translate-path-function 'identity
+  "This function is called on all paths returned by `monroe-jump'.
+You can use it to translate paths if you are running an nrepl server remotely or
+inside a container.")
+
 (defun monroe-jump-find-file (file)
   "Internal function to find a file on the disk or inside a jar."
   (if (not (string-match "^jar:file:\\(.+\\)!\\(.+\\)" file))
@@ -428,7 +433,7 @@ at the top of the file."
        (when value
          (destructuring-bind (file line column)
              (append (car (read-from-string value)) nil)
-           (monroe-jump-find-file file)
+           (monroe-jump-find-file (funcall monroe-translate-path-function file))
            (goto-char (point-min))
            (forward-line line)))))))
 
