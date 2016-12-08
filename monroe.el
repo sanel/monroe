@@ -479,7 +479,7 @@ as path can be remote location. For remote paths, use absolute path."
 (defun monroe-jump-pop ()
   "Return point to the position and buffer before running `monroe-jump'."
   (interactive)
-  (let ((marker (pop find-tag-marker-ring)))
+  (let ((marker (ring-remove find-tag-marker-ring 0)))
     (switch-to-buffer (marker-buffer marker))
     (goto-char (marker-position marker))))
 
