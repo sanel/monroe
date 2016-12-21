@@ -426,16 +426,16 @@ inside a container.")
 (defun monroe-eval-jump (var)
   "Internal function to actually ask for var location via nrepl protocol."
   (monroe-send-eval-string
-   (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line :column)
-                  (meta (var ,(intern var)))))
+   (format "%s" `(if-let [r (resolve 'clojure.java.io/resource)]
+                         ((juxt (comp str r :file) :line :column)
+                          (meta (var ,(intern var))))))
    (lambda (response)
      (let ((value (cdr (assoc "value" response))))
        (when value
          (destructuring-bind (file line column)
              (append (car (read-from-string value)) nil)
            (monroe-jump-find-file (funcall monroe-translate-path-function file))
-           (goto-char (point-min))
-           (forward-line line)))))))
+           (goto-char (point-min))))))))
 
 (defun monroe-get-stacktrace (root-ex ex)
   "When error is happened, try to get as much details as possible from last stracktrace."
@@ -488,6 +488,10 @@ as path can be remote location. For remote paths, use absolute path."
     (switch-to-buffer (marker-buffer marker))
     (goto-char (marker-position marker))))
 
+(defun monroe-switch-to-repl ()
+  (interactive)
+  (switch-to-buffer monroe-repl-buffer))
+
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
   (let (keys)
@@ -510,8 +514,9 @@ as path can be remote location. For remote paths, use absolute path."
     (define-key map "\C-c\C-d" 'monroe-describe)
     (define-key map "\C-c\C-b" 'monroe-interrupt)
     (define-key map "\C-c\C-l" 'monroe-load-file)
-    (define-key map "\M-."      'monroe-jump)
-    (define-key map "\M-,"      'monroe-jump-pop)
+    (define-key map "\M-."     'monroe-jump)
+    (define-key map "\M-,"     'monroe-jump-pop)
+    (define-key map "\C-c\C-z" 'monroe-switch-to-repl)
     map))
 
 ;; keys for interacting inside Monroe REPL buffer
