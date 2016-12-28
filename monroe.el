@@ -426,11 +426,13 @@ inside a container.")
 (defun monroe-eval-jump (var)
   "Internal function to actually ask for var location via nrepl protocol."
   (monroe-send-eval-string
-   (format "%s" `(if-let [r (resolve 'clojure.java.io/resource)]
-                         ((juxt (comp str r :file) :line :column)
-                          (meta (var ,(intern var))))))
+   (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line :column)
+                  (meta (var ,(intern var)))))
    (lambda (response)
-     (let ((value (cdr (assoc "value" response))))
+     (let ((value (cdr (assoc "value" response)))
+           (status (cdr (assoc "status" response))))
+       (when (member "done" status)
+         (remhash id monroe-requests))
        (when value
          (destructuring-bind (file line column)
              (append (car (read-from-string value)) nil)
