@@ -77,6 +77,8 @@ Keys                | Description
 <kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 <kbd>C-c C-n</kbd>  | Evaluate namespace.
 <kbd>C-c C-b</kbd>  | Interrupt running job.
+<kbd>M-.</kbd>      | Jump to definition of var at point.
+<kbd>M-,</kbd>      | Jump back to where you were before you did `M-.`
 
 ### Monroe shortcuts for REPL buffer
 
