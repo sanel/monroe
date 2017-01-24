@@ -423,21 +423,23 @@ inside a container.")
         (when (not already-open)
           (kill-buffer archive-buffer))))))
 
-(defun monroe-eval-jump (var)
+(defun monroe-eval-jump (ns var)
   "Internal function to actually ask for var location via nrepl protocol."
   (monroe-send-eval-string
-   (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line :column)
-                  (meta (var ,(intern var)))))
+   (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line)
+                  (meta (ns-resolve ',(intern ns) ',(intern var)))))
    (lambda (response)
      (let ((value (cdr (assoc "value" response)))
            (status (cdr (assoc "status" response))))
        (when (member "done" status)
          (remhash id monroe-requests))
        (when value
-         (destructuring-bind (file line column)
+         (destructuring-bind (file line)
              (append (car (read-from-string value)) nil)
            (monroe-jump-find-file (funcall monroe-translate-path-function file))
-           (goto-char (point-min))))))))
+           (when line
+             (goto-char (point-min))
+             (forward-line (1- line)))))))))
 
 (defun monroe-get-stacktrace (root-ex ex)
   "When error is happened, try to get as much details as possible from last stracktrace."
@@ -481,7 +483,7 @@ as path can be remote location. For remote paths, use absolute path."
              (substring-no-properties (thing-at-point 'symbol))
            (read-string "Find var: "))))
   (ring-insert find-tag-marker-ring (point-marker))
-  (monroe-eval-jump var))
+  (monroe-eval-jump (clojure-find-ns) var))
 
 (defun monroe-jump-pop ()
   "Return point to the position and buffer before running `monroe-jump'."
