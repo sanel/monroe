@@ -427,7 +427,8 @@ inside a container.")
   "Internal function to actually ask for var location via nrepl protocol."
   (monroe-send-eval-string
    (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line)
-                  (meta (ns-resolve ',(intern ns) ',(intern var)))))
+                  (meta ,(if ns `(ns-resolve ',(intern ns) ',(intern var))
+                           `(resolve ',(intern var))))))
    (lambda (response)
      (let ((value (cdr (assoc "value" response)))
            (status (cdr (assoc "status" response))))
@@ -483,7 +484,8 @@ as path can be remote location. For remote paths, use absolute path."
              (substring-no-properties (thing-at-point 'symbol))
            (read-string "Find var: "))))
   (ring-insert find-tag-marker-ring (point-marker))
-  (monroe-eval-jump (clojure-find-ns) var))
+  (monroe-eval-jump (and (fboundp 'clojure-find-ns)
+                         (funcall 'clojure-find-ns)) var))
 
 (defun monroe-jump-pop ()
   "Return point to the position and buffer before running `monroe-jump'."
