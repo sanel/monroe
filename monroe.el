@@ -412,7 +412,9 @@ at the top of the file."
 
 (defun monroe-eval-doc (symbol)
   "Internal function to actually ask for symbol documentation via nrepl protocol."
-  (monroe-input-sender (get-buffer-process monroe-repl-buffer) (format "(clojure.repl/doc %s)" symbol)))
+  (monroe-input-sender
+   (get-buffer-process monroe-repl-buffer)
+   (format "(do (require 'clojure.repl) (clojure.repl/doc %s))" symbol)))
 
 (eval-when-compile '(require 'arc-mode))
 
@@ -458,7 +460,8 @@ inside a container.")
                  (if monroe-old-style-stacktraces
                      'clojure.stacktrace/print-stack-trace
                    'clojure.repl/pst))))
-    (monroe-send-eval-string (format "(%s *e)" pst)
+    (monroe-send-eval-string (format "(do (require (namespace '%s)) (%s *e))"
+                                     pst pst)
                              (monroe-make-response-handler))))
 
 (defun monroe-describe (symbol)
