@@ -74,8 +74,19 @@ exception. Otherwise will just behave as standard REPL version."
 (defcustom monroe-old-style-stacktraces nil
   "If set to true, Monroe will try to emit old style Clojure stacktraces
 using 'clojure.stacktrace/print-stack-trace'. This will work on older Clojure versions (e.g. 1.2)
-but will NOT work on ClojureScript. This option assumes 'monroe-detail-stacktraces' is true."
+but will NOT work on ClojureScript. This option assumes 'monroe-detail-stacktraces' is true.
+
+DEPRECATED; use monroe-print-stack-trace-function instead."
   :type 'boolean
+  :group 'monroe)
+
+(defcustom monroe-print-stack-trace-function nil
+  "Set to a clojure-side function in order to override stack-trace printing.
+
+Will be called upon error when `monroe-detail-stacktraces' is non-nil.
+
+e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
+  :type 'symbol
   :group 'monroe)
 
 (defvar monroe-version "0.4.0"
@@ -245,7 +256,9 @@ the operations supported by an nREPL endpoint."
          ;; now handle status
          (when status
            (when (and monroe-detail-stacktraces (member "eval-error" status))
-             (monroe-get-stacktrace root-ex ex))
+             (monroe-get-stacktrace))
+           (when (member "eval-error" status)
+             (message root-ex))
            (when (member "interrupted" status)
              (message "Evaluation interrupted."))
            (when (member "need-input" status)
@@ -400,7 +413,9 @@ at the top of the file."
 
 (defun monroe-eval-doc (symbol)
   "Internal function to actually ask for symbol documentation via nrepl protocol."
-  (monroe-input-sender (get-buffer-process monroe-repl-buffer) (format "(clojure.repl/doc %s)" symbol)))
+  (monroe-input-sender
+   (get-buffer-process monroe-repl-buffer)
+   (format "(do (require 'clojure.repl) (clojure.repl/doc %s))" symbol)))
 
 (eval-when-compile '(require 'arc-mode))
 
@@ -443,13 +458,15 @@ inside a container.")
              (goto-char (point-min))
              (forward-line (1- line)))))))))
 
-(defun monroe-get-stacktrace (root-ex ex)
-  "When error is happened, try to get as much details as possible from last stracktrace."
-  (monroe-input-sender
-   (get-buffer-process monroe-repl-buffer)
-   (if monroe-old-style-stacktraces
-     "(clojure.stacktrace/print-stack-trace *e)"
-     "(clojure.repl/pst *e)")))
+(defun monroe-get-stacktrace ()
+  "When error happens, print the stack trace"
+  (let ((pst (or monroe-print-stack-trace-function
+                 (if monroe-old-style-stacktraces
+                     'clojure.stacktrace/print-stack-trace
+                   'clojure.repl/pst))))
+    (monroe-send-eval-string (format "(do (require (namespace '%s)) (%s *e))"
+                                     pst pst)
+                             (monroe-make-response-handler))))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
