@@ -417,8 +417,6 @@ at the top of the file."
    (get-buffer-process monroe-repl-buffer)
    (format "(do (require 'clojure.repl) (clojure.repl/doc %s))" symbol)))
 
-(eval-when-compile '(require 'arc-mode))
-
 (defvar monroe-translate-path-function 'identity
   "This function is called on all paths returned by `monroe-jump'.
 You can use it to translate paths if you are running an nrepl server remotely or
@@ -435,6 +433,7 @@ inside a container.")
       (goto-char (point-min))
       (search-forward-regexp (concat " " (substring clj 1) "$"))
       (let ((archive-buffer (current-buffer)))
+        (declare-function archive-extract "arc-mode")
         (archive-extract)
         (when (not already-open)
           (kill-buffer archive-buffer))))))
@@ -446,8 +445,7 @@ inside a container.")
                   (meta ,(if ns `(ns-resolve ',(intern ns) ',(intern var))
                            `(resolve ',(intern var))))))
    (lambda (response)
-     (let ((value (cdr (assoc "value" response)))
-           (status (cdr (assoc "status" response))))
+     (monroe-dbind-response response (id value status)
        (when (member "done" status)
          (remhash id monroe-requests))
        (when value
@@ -501,6 +499,8 @@ as path can be remote location. For remote paths, use absolute path."
    (list (if (thing-at-point 'symbol)
              (substring-no-properties (thing-at-point 'symbol))
            (read-string "Find var: "))))
+  (defvar find-tag-marker-ring) ;; etags.el
+  (require 'etags)
   (ring-insert find-tag-marker-ring (point-marker))
   (monroe-eval-jump (and (fboundp 'clojure-find-ns)
                          (funcall 'clojure-find-ns)) var))
@@ -508,6 +508,8 @@ as path can be remote location. For remote paths, use absolute path."
 (defun monroe-jump-pop ()
   "Return point to the position and buffer before running `monroe-jump'."
   (interactive)
+  (defvar find-tag-marker-ring) ;; etags.el
+  (require 'etags)
   (let ((marker (ring-remove find-tag-marker-ring 0)))
     (switch-to-buffer (marker-buffer marker))
     (goto-char (marker-position marker))))
