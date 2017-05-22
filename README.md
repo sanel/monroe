@@ -72,8 +72,9 @@ code and where *monroe-interaction-mode* is activated.
 Keys                | Description
 --------------------|----------------------------
 <kbd>C-c C-c</kbd>  | Evaluate expression at point.
+<kbd>C-c C-l</kbd>  | Load a file.
 <kbd>C-c C-r</kbd>  | Evaluate region.
-<kbd>C-c C-k</kbd>  | Evaluate buffer.
+<kbd>C-c C-k</kbd>  | Evaluate current buffer.
 <kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 <kbd>C-c C-n</kbd>  | Evaluate namespace.
 <kbd>C-c C-b</kbd>  | Interrupt running job.

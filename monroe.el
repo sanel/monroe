@@ -489,17 +489,20 @@ inside a container.")
 
 (defun monroe-load-file (path)
   "Load file to running process, asking user for alternative path.
-This function, contrary to clojure-mode.el, will not use comint-mode for sending files
-as path can be remote location. For remote paths, use absolute path."
+This function, contrary to clojure-mode.el, will not use comint-mode for sending
+files as path can be remote location. For remote paths, use absolute path."
   (interactive
    (list
     (let ((n (buffer-file-name)))
       (read-file-name "Load file: " nil nil nil
                       (and n (file-name-nondirectory n))))))
+  (when (and (find-buffer-visiting path) (buffer-modified-p path))
+    (save-some-buffers nil (lambda () (equal buffer-file-name path))))
   (let ((full-path (convert-standard-filename (expand-file-name path))))
     (monroe-input-sender
      (get-buffer-process monroe-repl-buffer)
-     (format "(clojure.core/load-file \"%s\")" full-path))))
+     (format "(clojure.core/load-file \"%s\")"
+             (funcall monroe-translate-path-function full-path)))))
 
 (defun monroe-jump (var)
   "Jump to definition of var at point."
