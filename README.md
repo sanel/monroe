@@ -73,12 +73,23 @@ Keys                | Description
 --------------------|----------------------------
 <kbd>C-c C-c</kbd>  | Evaluate expression at point.
 <kbd>C-c C-r</kbd>  | Evaluate region.
-<kbd>C-c C-k</kbd>  | Evaluate buffer.
+<kbd>C-c C-k</kbd>  | Evaluate current buffer contents.
+<kbd>C-c C-l</kbd>  | Load current file from disk.
 <kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 <kbd>C-c C-n</kbd>  | Evaluate namespace.
 <kbd>C-c C-b</kbd>  | Interrupt running job.
 <kbd>M-.</kbd>      | Jump to definition of var at point.
 <kbd>M-,</kbd>      | Jump back to where you were before you did `M-.`
+
+Note the difference between <kbd>C-c C-k</kbd> and <kbd>C-c C-l</kbd>;
+the former loads the contents of the buffer and sends them directly
+over the wire; this can differ from the state of the namespace on
+disk, and doesn't always convey line number information. It loads each
+top-level form in the file individually, and if one of them fails it
+will continue compiling the rest. The second one tells the server to
+load the whole file from its disk, so if you are connected to a remote
+server and have made changes to your local copy, they will not be
+loaded. However, a single exception will halt the whole thing.
 
 ### Monroe shortcuts for REPL buffer
 
@@ -89,6 +100,7 @@ Keys                | Description
 --------------------|----------------------------
 <kbd>C-c C-d</kbd>  | Describe symbol at point, showing documentation in REPL window.
 <kbd>C-c C-c</kbd>  | Interrupt running job.
+<kbd>M-.</kbd>      | Jump to definition of var at point.
 
 ## Bug reports & patches
 
