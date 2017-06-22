@@ -560,7 +560,6 @@ as path can be remote location. For remote paths, use absolute path."
     (define-key map "\C-c\C-d" 'monroe-describe)
     (define-key map "\C-c\C-c" 'monroe-interrupt)
     (define-key map "\M-."     'monroe-jump)
-    (define-key map "\M-,"     'monroe-jump-pop)
     map))
 
 ;;; rest
