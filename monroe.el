@@ -470,9 +470,9 @@ inside a container.")
                  (if monroe-old-style-stacktraces
                      'clojure.stacktrace/print-stack-trace
                    'clojure.repl/pst))))
-    (monroe-send-eval-string (format "(do (require (namespace '%s)) (%s *e))"
-                                     pst pst)
-                             (monroe-make-response-handler))))
+    (monroe-send-eval-string
+     (format "(do (require (symbol (namespace '%s))) (%s *e))" pst pst)
+     (monroe-make-response-handler))))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
@@ -560,7 +560,6 @@ as path can be remote location. For remote paths, use absolute path."
     (define-key map "\C-c\C-d" 'monroe-describe)
     (define-key map "\C-c\C-c" 'monroe-interrupt)
     (define-key map "\M-."     'monroe-jump)
-    (define-key map "\M-,"     'monroe-jump-pop)
     map))
 
 ;;; rest
