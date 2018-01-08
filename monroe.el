@@ -273,12 +273,6 @@ the operations supported by an nREPL endpoint."
   "Called when user enter data in REPL and when something is received in."
   (monroe-send-eval-string input (monroe-make-response-handler)))
 
-(defun monroe-input-sender-with-history (proc input)
-  "Called when user enter data in REPL. It will also record input for
-history purposes."
-  (comint-add-to-input-history input)
-  (monroe-input-sender proc input))
-
 (defun monroe-handle-input ()
   "Called when requested user input."
   (monroe-send-stdin
@@ -573,7 +567,7 @@ The following keys are available in `monroe-mode':
 
   :syntax-table lisp-mode-syntax-table
   (setq comint-prompt-regexp monroe-prompt-regexp)
-  (setq comint-input-sender 'monroe-input-sender-with-history)
+  (setq comint-input-sender 'monroe-input-sender)
   (setq mode-line-process '(":%s"))
   ;(set (make-local-variable 'font-lock-defaults) '(clojure-font-lock-keywords t))
 
