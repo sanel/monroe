@@ -526,7 +526,7 @@ as path can be remote location. For remote paths, use absolute path."
 
 (defun monroe-switch-to-repl ()
   (interactive)
-  (switch-to-buffer monroe-repl-buffer))
+  (pop-to-buffer monroe-repl-buffer))
 
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
