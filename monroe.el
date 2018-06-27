@@ -528,6 +528,19 @@ as path can be remote location. For remote paths, use absolute path."
   (interactive)
   (pop-to-buffer monroe-repl-buffer))
 
+(defun monroe-start-lein-nrepl ()
+  "Starts NREPL via Leiningen's repl command"
+  (interactive)
+  (require 'term)
+  (let* ((cmd "lein")
+         (args "trampoline repl :headless")
+         (switches (split-string-and-unquote args))
+         (termbuf (apply 'make-term "lein repl" cmd nil switches)))
+    (set-buffer termbuf)
+    (term-mode)
+    (term-char-mode)
+    (switch-to-buffer termbuf)))
+
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
   (let (keys)
