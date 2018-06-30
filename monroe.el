@@ -348,9 +348,12 @@ monroe-repl-buffer."
     str
     default))
 
+(defun monroe-locate-port-file ()
+  (locate-dominating-file default-directory ".nrepl-port"))
+
 (defun monroe-locate-running-nrepl-host ()
   "Return host of running nREPL server."
-  (let ((dir (locate-dominating-file default-directory ".nrepl-port")))
+  (let ((dir (monroe-locate-port-file)))
     (when dir
       (with-temp-buffer
         (insert-file-contents (concat dir ".nrepl-port"))
@@ -544,7 +547,7 @@ as path can be remote location. For remote paths, use absolute path."
   (let* ((cmd monroe-nrepl-server-cmd)
          (switches (split-string-and-unquote monroe-nrepl-server-cmd-args))
          (nrepl-buf-name (concat "*" monroe-nrepl-server-buffer-name "*"))
-         (repl-started-dir (locate-dominating-file default-directory ".nrepl-port")))
+         (repl-started-dir (monroe-locate-port-file)))
     (if repl-started-dir
         (message (concat "Monroe: nREPL server already running in " repl-started-dir))
       (progn
