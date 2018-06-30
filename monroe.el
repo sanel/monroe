@@ -112,6 +112,14 @@ e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
 is only advertised until first expression is evaluated, then is updated
 to the one used on nrepl side.")
 
+(defvar monroe-nrepl-server-cmd "lein"
+  "Command to start nrepl server. Defaults to Leiningen")
+
+(defvar monroe-nrepl-server-cmd-args "trampoline repl :headless"
+  "Arguments to pass to the nrepl command. Defaults to 'trampoline repl :headless'")
+
+(defvar monroe-nrepl-server-buffer-name "monroe nrepl server")
+
 (make-variable-buffer-local 'monroe-session)
 (make-variable-buffer-local 'monroe-requests)
 (make-variable-buffer-local 'monroe-requests-counter)
@@ -528,14 +536,14 @@ as path can be remote location. For remote paths, use absolute path."
   (interactive)
   (pop-to-buffer monroe-repl-buffer))
 
-(defun monroe-start-lein-nrepl ()
-  "Starts NREPL via Leiningen's repl command"
+(defun monroe-nrepl-server-start ()
+  "Starts nREPL server by invoking monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args"
   (interactive)
   (require 'term)
-  (let* ((cmd "lein")
-         (args "trampoline repl :headless")
-         (switches (split-string-and-unquote args))
-         (termbuf (apply 'make-term "lein repl" cmd nil switches)))
+  (let* ((cmd monroe-nrepl-server-cmd)
+         (switches (split-string-and-unquote monroe-nrepl-server-cmd-args))
+         (termbuf (apply 'make-term monroe-nrepl-server-buffer-name
+                         cmd nil switches)))
     (set-buffer termbuf)
     (term-mode)
     (term-char-mode)
