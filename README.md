@@ -62,6 +62,38 @@ Then, in Emacs:
 
 and follow the question about nREPL server location and port.
 
+### Starting the nREPL server
+
+You can start the nREPL server straight from Emacs by running:
+
+<kbd>M-x monroe-nrepl-server-start [RET]</kbd>
+
+and then connect as above.
+By default Monroe will start Leiningen REPL with command:
+
+`lein trampoline repl :headless`
+
+You can override this by setting the following variables:
+
+- `monroe-nrepl-server-cmd` - defaults to `lein`
+- `monroe-nrepl-server-cmd-args` - defaults to `trampoline repl :headless`
+- `monroe-nrepl-server-project-file` - defaults to `project.clj` - this is used
+   for finding your project's root and launching the REPL process in that location
+
+#### Boot configuration
+
+(*Note*: these are not verified!)
+
+For boot, set the following in your `init.el`:
+
+
+```elisp
+(setq monroe-nrepl-server-cmd "boot")
+(setq monroe-nrepl-server-cmd-args "repl -S")
+(setq monroe-nrepl-server-project-file "build.boot")
+```
+
+
 ## Keys and shortcuts
 
 ### Monroe shortcuts for code buffer

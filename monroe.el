@@ -542,7 +542,7 @@ as path can be remote location. For remote paths, use absolute path."
   (pop-to-buffer monroe-repl-buffer))
 
 (defun monroe-nrepl-server-start ()
-  "Starts nrepl server. Uses monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args as the command."
+  "Starts nrepl server. Uses monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args as the command. Finds project root by locatin monroe-nrepl-server-project-file"
   (interactive)
   (let* ((cmd monroe-nrepl-server-cmd)
          (switches (split-string-and-unquote monroe-nrepl-server-cmd-args))
