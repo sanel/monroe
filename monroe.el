@@ -112,6 +112,16 @@ e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
 is only advertised until first expression is evaluated, then is updated
 to the one used on nrepl side.")
 
+(defvar monroe-nrepl-server-cmd "lein"
+  "Command to start nrepl server. Defaults to Leiningen")
+
+(defvar monroe-nrepl-server-cmd-args "trampoline repl :headless"
+  "Arguments to pass to the nrepl command. Defaults to 'trampoline repl :headless'")
+
+(defvar monroe-nrepl-server-buffer-name "monroe nrepl server")
+
+(defvar monroe-nrepl-server-project-file "project.clj")
+
 (make-variable-buffer-local 'monroe-session)
 (make-variable-buffer-local 'monroe-requests)
 (make-variable-buffer-local 'monroe-requests-counter)
@@ -338,9 +348,12 @@ monroe-repl-buffer."
     str
     default))
 
+(defun monroe-locate-port-file ()
+  (locate-dominating-file default-directory ".nrepl-port"))
+
 (defun monroe-locate-running-nrepl-host ()
   "Return host of running nREPL server."
-  (let ((dir (locate-dominating-file default-directory ".nrepl-port")))
+  (let ((dir (monroe-locate-port-file)))
     (when dir
       (with-temp-buffer
         (insert-file-contents (concat dir ".nrepl-port"))
@@ -527,6 +540,28 @@ as path can be remote location. For remote paths, use absolute path."
 (defun monroe-switch-to-repl ()
   (interactive)
   (pop-to-buffer monroe-repl-buffer))
+
+(defun monroe-nrepl-server-start ()
+  "Starts nrepl server. Uses monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args as the command. Finds project root by locatin monroe-nrepl-server-project-file"
+  (interactive)
+  (let* ((cmd monroe-nrepl-server-cmd)
+         (switches (split-string-and-unquote monroe-nrepl-server-cmd-args))
+         (nrepl-buf-name (concat "*" monroe-nrepl-server-buffer-name "*"))
+         (repl-started-dir (monroe-locate-port-file)))
+    (if repl-started-dir
+        (message (concat "Monroe: nREPL server already running in " repl-started-dir))
+      (progn
+        (lexical-let ((default-directory
+                        (locate-dominating-file default-directory
+                                                monroe-nrepl-server-project-file)))
+          (message (concat
+                    "Monroe: Starting nREPL server in " default-directory))
+          (apply 'async-start-process
+                 monroe-nrepl-server-buffer-name
+                 cmd
+                 nil
+                 switches))
+        (switch-to-buffer nrepl-buf-name)))))
 
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
