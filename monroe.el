@@ -544,24 +544,17 @@ as path can be remote location. For remote paths, use absolute path."
 (defun monroe-nrepl-server-start ()
   "Starts nrepl server. Uses monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args as the command. Finds project root by locatin monroe-nrepl-server-project-file"
   (interactive)
-  (let* ((cmd monroe-nrepl-server-cmd)
-         (switches (split-string-and-unquote monroe-nrepl-server-cmd-args))
-         (nrepl-buf-name (concat "*" monroe-nrepl-server-buffer-name "*"))
+  (let* ((nrepl-buf-name (concat "*" monroe-nrepl-server-buffer-name "*"))
          (repl-started-dir (monroe-locate-port-file)))
     (if repl-started-dir
-        (message (concat "Monroe: nREPL server already running in " repl-started-dir))
+        (message "nREPL server already running in %s" repl-started-dir)
       (progn
         (lexical-let ((default-directory
                         (locate-dominating-file default-directory
                                                 monroe-nrepl-server-project-file)))
-          (message (concat
-                    "Monroe: Starting nREPL server in " default-directory))
-          (apply 'async-start-process
-                 monroe-nrepl-server-buffer-name
-                 cmd
-                 nil
-                 switches))
-        (switch-to-buffer nrepl-buf-name)))))
+          (message "Starting nREPL server in %s" default-directory)
+          (async-shell-command (concat monroe-nrepl-server-cmd " " monroe-nrepl-server-cmd-args)
+                               nrepl-buf-name))))))
 
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
