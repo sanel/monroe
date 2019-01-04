@@ -275,8 +275,8 @@ the operations supported by an nREPL endpoint."
              (monroe-handle-input))
            (when (member "done" status)
              (remhash id monroe-requests)))
-         ;; show prompt only when no output is given in any of received vars
-         (unless (or err out value root-ex ex)
+         ;; show prompt only when no messages are pending
+         (when (hash-table-empty-p monroe-requests)
            (comint-output-filter process (format monroe-repl-prompt-format monroe-buffer-ns)))))))
 
 (defun monroe-input-sender (proc input)
