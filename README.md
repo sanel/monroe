@@ -5,7 +5,7 @@
      alt="Monroe" title="Monroe screenshot">
 </p>
 
-Monroe is [nREPL](https://github.com/clojure/tools.nrepl) client for
+Monroe is [nREPL](https://github.com/nrepl/nrepl) client for
 Emacs, focused on simplicity and easy distribution primarily targeting
 Clojure users.
 
