@@ -134,6 +134,10 @@ Keys                | Description
 <kbd>C-c C-c</kbd>  | Interrupt running job.
 <kbd>M-.</kbd>      | Jump to definition of var at point.
 
+## Projects based on Monroe
+
+- [Miracle](https://github.com/Saikyun/miracle) - an Arcadia nREPL client
+
 ## Bug reports & patches
 
 Feel free to report any issues you find or you have suggestions for improvements.
