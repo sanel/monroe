@@ -229,11 +229,13 @@ be called when reply is received."
 the operations supported by an nREPL endpoint."
   (monroe-send-request '("op" "describe") callback))
 
-(defun monroe-send-eval-string (str callback)
+(defun monroe-send-eval-string (str callback &optional ns)
   "Send code for evaluation on given namespace."
-  (monroe-send-request (list "op" "eval"
-                             "session" (monroe-current-session)
-                             "code" str)
+  (monroe-send-request (append
+                        (list "op" "eval"
+                              "session" (monroe-current-session)
+                              "code" str)
+                        (and ns (list "ns" ns)))
                        callback))
 
 (defun monroe-send-stdin (str callback)
@@ -279,9 +281,9 @@ the operations supported by an nREPL endpoint."
          (when (hash-table-empty-p monroe-requests)
            (comint-output-filter process (format monroe-repl-prompt-format monroe-buffer-ns)))))))
 
-(defun monroe-input-sender (proc input)
+(defun monroe-input-sender (proc input &optional ns)
   "Called when user enter data in REPL and when something is received in."
-  (monroe-send-eval-string input (monroe-make-response-handler)))
+  (monroe-send-eval-string input (monroe-make-response-handler) ns))
 
 (defun monroe-handle-input ()
   "Called when requested user input."
@@ -395,10 +397,12 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
 
 ;;; keys
 
-(defun monroe-eval-region (start end)
+(defun monroe-eval-region (start end &optional ns)
   "Evaluate selected region."
   (interactive "r")
-  (monroe-input-sender (get-buffer-process monroe-repl-buffer) (buffer-substring-no-properties start end)))
+  (monroe-input-sender (get-buffer-process monroe-repl-buffer)
+                       (buffer-substring-no-properties start end)
+                       ns))
 
 (defun monroe-eval-buffer ()
   "Evaluate the buffer."
@@ -412,7 +416,7 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
     (end-of-defun)
     (let ((end (point)))
       (beginning-of-defun)
-      (monroe-eval-region (point) end))))
+      (monroe-eval-region (point) end (monroe-get-clojure-ns)))))
 
 (defun monroe-eval-expression-at-point ()
   "Figure out expression at point and send it for evaluation."
@@ -488,6 +492,12 @@ inside a container.")
     (monroe-send-eval-string
      (format "(do (require (symbol (namespace '%s))) (%s *e))" pst pst)
      (monroe-make-response-handler))))
+
+(defun monroe-get-clojure-ns ()
+  "If available, get the correct clojure namespace."
+  (and (eq major-mode 'clojure-mode)
+       (fboundp 'clojure-find-ns)
+       (funcall 'clojure-find-ns)))
 
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
