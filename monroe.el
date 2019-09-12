@@ -432,8 +432,7 @@ expression at the beginning of the file and evaluating it. Not something
 that is 100% accurate, but Clojure practice is to keep ns forms always
 at the top of the file."
   (interactive)
-  (when (and (fboundp 'clojure-find-ns)
-             (funcall 'clojure-find-ns))
+  (when (monroe-get-clojure-ns)
     (save-excursion
       (goto-char (match-beginning 0))
       (monroe-eval-defun))))
