@@ -104,9 +104,6 @@ e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
 (defvar monroe-custom-handlers (make-hash-table :test 'equal)
   "Map of handlers for custom ops.")
 
-(defvar monroe-repl-buffer "*monroe*"
-  "Name of nREPL buffer.")
-
 (defvar monroe-buffer-ns "user"
   "Current clojure namespace for this buffer. This namespace
 is only advertised until first expression is evaluated, then is updated
@@ -206,7 +203,7 @@ be called when reply is received."
          (message  (append (list "id" id) request))
          (bmessage (monroe-encode message)))
     (puthash id callback monroe-requests)
-    (monroe-write-message "*monroe-connection*" bmessage)))
+    (monroe-write-message (monroe-connection) bmessage)))
 
 (defun monroe-clear-request-table ()
   "Erases current request table."
@@ -215,12 +212,11 @@ be called when reply is received."
 
 (defun monroe-current-session ()
   "Returns current session id."
-  (with-current-buffer "*monroe-connection*"
-    monroe-session))
+  (with-current-buffer (process-buffer (monroe-connection)) monroe-session))
 
 ;;; nrepl messages we knows about
 
-(defun monroe-send-hello (callback)
+(defun monroe-send-hello (proc callback)
   "Initiate nREPL session."
   (monroe-send-request '("op" "clone") callback))
 
@@ -261,7 +257,7 @@ the operations supported by an nREPL endpoint."
        (let ((output (concat err out
                              (if value
                                (concat value "\n"))))
-             (process (get-buffer-process monroe-repl-buffer)))
+             (process (get-buffer-process (monroe-repl-buffer))))
          ;; update namespace if needed
          (if ns (setq monroe-buffer-ns ns))
          (comint-output-filter process output)
@@ -361,6 +357,24 @@ monroe-repl-buffer."
         (insert-file-contents (concat dir ".nrepl-port"))
         (concat "localhost:" (buffer-string))))))
 
+(defun monroe-extract-host (buff-name)
+  "Take host from monroe buffers."
+  (first (last (split-string (substring buff-name 1 -1) " "))))
+
+(defun monroe-repl-buffer ()
+  "Returns right monroe buffer."
+  (or (get-buffer (format "*monroe: %s*" (monroe-locate-running-nrepl-host)))
+      (get-buffer
+       (format "*monroe: %s*"
+               (monroe-extract-host (buffer-name (current-buffer)))))))
+
+(defun monroe-connection ()
+  "Returns right monroe connection."
+  (or (get-process (concat "monroe/" (monroe-locate-running-nrepl-host)))
+      (get-process
+       (concat "monroe/"
+               (monroe-extract-host (buffer-name (current-buffer)))))))
+
 (defun monroe-strip-protocol (host)
   "Check if protocol was given and strip it."
   (let ((host (replace-regexp-in-string "[ \t]" "" host)))
@@ -373,13 +387,16 @@ monroe-repl-buffer."
   (let* ((hp   (split-string (monroe-strip-protocol host-and-port) ":"))
          (host (monroe-valid-host-string (first hp) "localhost"))
          (port (string-to-number
-                (monroe-valid-host-string (second hp) "7888"))))
+                (monroe-valid-host-string (second hp) "7888")))
+         (name (concat "*monroe-connection: " host-and-port "*")))
+    (when (get-buffer name) (monroe-disconnect))
     (message "Connecting to nREPL host on '%s:%d'..." host port)
-    (let ((process (open-network-stream "monroe" "*monroe-connection*" host port)))
+    (let ((process (open-network-stream
+                    (concat "monroe/" host-and-port) name host port)))
       (set-process-filter process 'monroe-net-filter)
       (set-process-sentinel process 'monroe-sentinel)
       (set-process-coding-system process 'utf-8-unix 'utf-8-unix)
-      (monroe-send-hello (monroe-new-session-handler (process-buffer process)))
+      (monroe-send-hello process (monroe-new-session-handler (process-buffer process)))
       process)))
 
 (defun monroe-disconnect ()
@@ -389,9 +406,8 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
   (let ((delete-process-safe (lambda (p)
                                (when (and p (process-live-p p))
                                  (delete-process p))))
-        ;; 'monroe-repl-buffer' process is actually 'fake-proc'
-        (proc1 (get-buffer-process monroe-repl-buffer))
-        (proc2 (get-buffer-process "*monroe-connection*")))
+        (proc1 (get-buffer-process (monroe-repl-buffer)))
+        (proc2 (monroe-connection)))
     (funcall delete-process-safe proc1)
     (funcall delete-process-safe proc2)))
 
@@ -400,9 +416,10 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
 (defun monroe-eval-region (start end &optional ns)
   "Evaluate selected region."
   (interactive "r")
-  (monroe-input-sender (get-buffer-process monroe-repl-buffer)
-                       (buffer-substring-no-properties start end)
-                       ns))
+  (monroe-input-sender
+   (get-buffer-process (monroe-repl-buffer))
+   (buffer-substring-no-properties start end)
+   ns))
 
 (defun monroe-eval-buffer ()
   "Evaluate the buffer."
@@ -440,7 +457,7 @@ at the top of the file."
 (defun monroe-eval-doc (symbol)
   "Internal function to actually ask for symbol documentation via nrepl protocol."
   (monroe-input-sender
-   (get-buffer-process monroe-repl-buffer)
+   (get-buffer-process (monroe-repl-buffer))
    (format "(do (require 'clojure.repl) (clojure.repl/doc %s))" symbol)))
 
 (defvar monroe-translate-path-function 'identity
@@ -498,6 +515,10 @@ inside a container.")
        (fboundp 'clojure-find-ns)
        (funcall 'clojure-find-ns)))
 
+(defun monroe-get-directory ()
+  "Internal function to get project directory."
+  (locate-dominating-file default-directory monroe-nrepl-server-project-file))
+
 (defun monroe-describe (symbol)
   "Ask user about symbol and show symbol documentation if found."
   (interactive
@@ -522,7 +543,7 @@ as path can be remote location. For remote paths, use absolute path."
                       (and n (file-name-nondirectory n))))))
   (let ((full-path (convert-standard-filename (expand-file-name path))))
     (monroe-input-sender
-     (get-buffer-process monroe-repl-buffer)
+     (get-buffer-process (monroe-repl-buffer))
      (format "(clojure.core/load-file \"%s\")" full-path))))
 
 (defun monroe-jump (var)
@@ -548,7 +569,7 @@ as path can be remote location. For remote paths, use absolute path."
 
 (defun monroe-switch-to-repl ()
   (interactive)
-  (pop-to-buffer monroe-repl-buffer))
+  (pop-to-buffer (monroe-repl-buffer)))
 
 (defun monroe-nrepl-server-start ()
   "Starts nrepl server. Uses monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args as the command. Finds project root by locatin monroe-nrepl-server-project-file"
@@ -558,12 +579,9 @@ as path can be remote location. For remote paths, use absolute path."
     (if repl-started-dir
         (message "nREPL server already running in %s" repl-started-dir)
       (progn
-        (lexical-let ((default-directory
-                        (locate-dominating-file default-directory
-                                                monroe-nrepl-server-project-file)))
-          (message "Starting nREPL server in %s" default-directory)
-          (async-shell-command (concat monroe-nrepl-server-cmd " " monroe-nrepl-server-cmd-args)
-                               nrepl-buf-name))))))
+        (message "Starting nREPL server in %s" (monroe-get-directory))
+        (async-shell-command (concat monroe-nrepl-server-cmd " " monroe-nrepl-server-cmd-args)
+                             nrepl-buf-name)))))
 
 (defun monroe-extract-keys (htable)
   "Get all keys from hashtable."
@@ -650,14 +668,14 @@ connection endpoint."
       (read-string (format "Host (default '%s'): " host)
                    nil nil host))))
   (unless (ignore-errors
-            (with-current-buffer (get-buffer-create monroe-repl-buffer)
+            (with-current-buffer
+                (get-buffer-create (concat "*monroe: " host-and-port "*"))
               (prog1
                   (monroe-connect host-and-port)
                 (goto-char (point-max))
                 (monroe-mode)
                 (switch-to-buffer (current-buffer)))))
     (message "Unable to connect to %s" host-and-port)))
-
 (provide 'monroe)
 
 ;;; monroe.el ends here
