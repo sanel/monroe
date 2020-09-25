@@ -1,4 +1,4 @@
-;;; -*- indent-tabs-mode: nil -*-
+;;; -*- indent-tabs-mode: nil; lexical-binding: t -*-
 ;;; monroe.el --- Yet another client for nREPL
 
 ;; Copyright (c) 2014-2018 Sanel Zukan
@@ -487,17 +487,28 @@ inside a container.")
    (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line)
                   (meta ,(if ns `(ns-resolve ',(intern ns) ',(intern var))
                            `(resolve ',(intern var))))))
-   (lambda (response)
-     (monroe-dbind-response response (id value status)
-       (when (member "done" status)
-         (remhash id monroe-requests))
-       (when value
-         (destructuring-bind (file line)
-             (append (car (read-from-string value)) nil)
-           (monroe-jump-find-file (funcall monroe-translate-path-function file))
-           (when line
-             (goto-char (point-min))
-             (forward-line (1- line)))))))))
+   (let ((correct-var var)
+         (correct-ns ns))
+     (lambda (response)
+       (monroe-dbind-response response (id value status ex)
+         (when (member "done" status)
+           (remhash id monroe-requests))
+         (when ex
+           (message "%s"
+                    (concat
+                     (propertize "Couldn't find symbol: "
+                                 'face 'font-lock-warning-face)
+                     (propertize (concat correct-var
+                                         (when ns (concat " (in " correct-ns ")")))
+                                 'face 'font-lock-variable-name-face))))
+         (when value
+           (destructuring-bind (file line)
+               (append (car (read-from-string value)) nil)
+             (monroe-jump-find-file (funcall monroe-translate-path-function
+                                             file))
+             (when line
+               (goto-char (point-min))
+               (forward-line (1- line))))))))))
 
 (defun monroe-get-stacktrace ()
   "When error happens, print the stack trace"
@@ -555,8 +566,7 @@ as path can be remote location. For remote paths, use absolute path."
   (defvar find-tag-marker-ring) ;; etags.el
   (require 'etags)
   (ring-insert find-tag-marker-ring (point-marker))
-  (monroe-eval-jump (and (fboundp 'clojure-find-ns)
-                         (funcall 'clojure-find-ns)) var))
+  (monroe-eval-jump (monroe-get-clojure-ns) var))
 
 (defun monroe-jump-pop ()
   "Return point to the position and buffer before running `monroe-jump'."
