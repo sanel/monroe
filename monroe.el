@@ -541,7 +541,7 @@ as path can be remote location. For remote paths, use absolute path."
     (let ((n (buffer-file-name)))
       (read-file-name "Load file: " nil nil nil
                       (and n (file-name-nondirectory n))))))
-  (let ((full-path (convert-standard-filename (expand-file-name path))))
+  (let ((full-path (tramp-compat-file-local-name (convert-standard-filename (expand-file-name path)))))
     (monroe-input-sender
      (get-buffer-process (monroe-repl-buffer))
      (format "(clojure.core/load-file \"%s\")" full-path))))
