@@ -478,17 +478,15 @@ inside a container.")
 
 (defun monroe-eval-jump (ns var)
   "Internal function to actually ask for var location via nrepl protocol."
-  (monroe-send-eval-string
-   (format "%s" `((juxt (comp str clojure.java.io/resource :file) :line)
-                  (meta ,(if ns `(ns-resolve ',(intern ns) ',(intern var))
-                           `(resolve ',(intern var))))))
+  (monroe-send-request (list "op" "lookup"
+                             "sym" var
+                             "ns" ns)
    (lambda (response)
-     (monroe-dbind-response response (id value status)
+     (monroe-dbind-response response (id info status)
        (when (member "done" status)
          (remhash id monroe-requests))
-       (when value
-         (cl-destructuring-bind (file line)
-             (append (car (read-from-string value)) nil)
+       (when info
+         (monroe-dbind-response info (file line)
            (monroe-jump-find-file (funcall monroe-translate-path-function file))
            (when line
              (goto-char (point-min))
