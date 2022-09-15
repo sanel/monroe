@@ -101,6 +101,9 @@ e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
 (defvar monroe-requests-counter 0
   "Serial number for message.")
 
+(defvar monroe-nrepl-sync-timeout 5
+  "Number of seconds to wait for a sync response")
+
 (defvar monroe-custom-handlers (make-hash-table :test 'equal)
   "Map of handlers for custom ops.")
 
@@ -200,6 +203,24 @@ be called when reply is received."
          (bmessage (monroe-encode message)))
     (puthash id callback monroe-requests)
     (process-send-string (monroe-connection) bmessage)))
+
+(defun monroe-send-sync-request (request)
+  "Send request to nREPL server synchronously."
+  (let ((time0 (current-time))
+        response
+        global-status)
+    (monroe-send-request request (lambda (resp) (setq response resp)))
+    (while (not (member "done" global-status))
+      (monroe-dbind-response response (status)
+        (setq global-status status))
+      (when (time-less-p monroe-nrepl-sync-timeout
+                         (time-subtract nil time0))
+        (error "Sync nREPL request timed out %s" request))
+      (accept-process-output nil 0.01))
+    (monroe-dbind-response response (id status)
+      (when id
+        (remhash id monroe-requests)))
+    response))
 
 (defun monroe-clear-request-table ()
   "Erases current request table."
@@ -492,6 +513,21 @@ inside a container.")
              (goto-char (point-min))
              (forward-line (1- line)))))))))
 
+(defun monroe-completion-at-point ()
+  "Function to be used for the hook 'completion-at-point-functions'."
+  (interactive)
+  (let* ((bnds (bounds-of-thing-at-point 'symbol))
+         (start (car bnds))
+         (end (cdr bnds))
+         (ns (monroe-get-clojure-ns))
+         (sym (thing-at-point 'symbol))
+         (response (monroe-send-sync-request (list "op" "completions"
+                                                   "ns" ns
+                                                   "prefix" sym))))
+    (monroe-dbind-response response (completions)
+      (when completions
+        (list start end (mapcar 'cdadr completions) nil)))))
+
 (defun monroe-get-stacktrace ()
   "When error happens, print the stack trace"
   (let ((pst (or monroe-print-stack-trace-function
@@ -548,8 +584,7 @@ as path can be remote location. For remote paths, use absolute path."
   (defvar find-tag-marker-ring) ;; etags.el
   (require 'etags)
   (ring-insert find-tag-marker-ring (point-marker))
-  (monroe-eval-jump (and (fboundp 'clojure-find-ns)
-                         (funcall 'clojure-find-ns)) var))
+  (monroe-eval-jump (monroe-get-clojure-ns) var))
 
 (defun monroe-jump-pop ()
   "Return point to the position and buffer before running `monroe-jump'."
@@ -627,7 +662,7 @@ The following keys are available in `monroe-mode':
   (setq comint-input-sender 'monroe-input-sender)
   (setq mode-line-process '(":%s"))
   ;(set (make-local-variable 'font-lock-defaults) '(clojure-font-lock-keywords t))
-
+  (add-hook 'completion-at-point-functions #'monroe-completion-at-point 'local)
   ;; a hack to keep comint happy
   (unless (comint-check-proc (current-buffer))
     (let ((fake-proc (start-process "monroe" (current-buffer) nil)))
