@@ -72,9 +72,11 @@ exception. Otherwise will just behave as standard REPL version."
   :group 'monroe)
 
 (defcustom monroe-old-style-stacktraces nil
-  "If set to true, Monroe will try to emit old style Clojure stacktraces
-using 'clojure.stacktrace/print-stack-trace'. This will work on older Clojure versions (e.g. 1.2)
-but will NOT work on ClojureScript. This option assumes 'monroe-detail-stacktraces' is true.
+  "If set to true, Monroe will try to emit old style Clojure
+stacktraces using 'clojure.stacktrace/print-stack-trace'. This
+will work on older Clojure versions (e.g. 1.2) but will NOT work
+on ClojureScript. This option assumes 'monroe-detail-stacktraces'
+is true.
 
 DEPRECATED; use monroe-print-stack-trace-function instead."
   :type 'boolean
@@ -176,8 +178,8 @@ to the one used on nrepl side.")
 
 (defun monroe-encode (message)
   "Encode message to nrepl format. The message format is
-'d<key-len>:key<val-len>:value<key-len>:key<val-len>:valuee', where the message is
-starting with 'd' and ending with 'e'."
+'d<key-len>:key<val-len>:value<key-len>:key<val-len>:valuee',
+where the message is starting with 'd' and ending with 'e'."
   (concat "d"
     (apply 'concat
       (mapcar (lambda (str)
@@ -563,8 +565,9 @@ inside a container.")
 
 (defun monroe-load-file (path)
   "Load file to running process, asking user for alternative path.
-This function, contrary to clojure-mode.el, will not use comint-mode for sending files
-as path can be remote location. For remote paths, use absolute path."
+This function, contrary to clojure-mode.el, will not use
+comint-mode for sending files as path can be remote location. For
+remote paths, use absolute path."
   (interactive
    (list
     (let ((n (buffer-file-name)))
@@ -600,7 +603,9 @@ as path can be remote location. For remote paths, use absolute path."
   (pop-to-buffer (monroe-repl-buffer)))
 
 (defun monroe-nrepl-server-start ()
-  "Starts nrepl server. Uses monroe-nrepl-server-cmd + monroe-nrepl-server-cmd-args as the command. Finds project root by locatin monroe-nrepl-server-project-file"
+  "Starts nrepl server. Uses monroe-nrepl-server-cmd +
+monroe-nrepl-server-cmd-args as the command. Finds project root
+by locatin monroe-nrepl-server-project-file"
   (interactive)
   (let* ((nrepl-buf-name (concat "*" monroe-nrepl-server-buffer-name "*"))
          (repl-started-dir (monroe-locate-port-file)))
@@ -684,7 +689,7 @@ The following keys are available in `monroe-interaction-mode`:
 
   \\{monroe-interaction-mode}"
 
-  nil " Monroe" monroe-interaction-mode-map)
+  :init-value nil :lighter " Monroe" :keymap monroe-interaction-mode-map)
 
 ;;;###autoload
 (defun monroe (host-and-port)
