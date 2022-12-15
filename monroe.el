@@ -187,14 +187,16 @@ The CALLBACK function will be called when reply is received."
 the operations supported by an nREPL endpoint."
   (monroe-send-request '(("op" . "describe")) callback))
 
-(cl-defun monroe-send-eval-string (str callback &optional (ns monroe-buffer-ns))
+(cl-defun monroe-send-eval-string (str callback &optional ns)
   "Send code for evaluation on given namespace."
-  (monroe-send-request
-   `(("op" . "eval")
-     ("session" . ,(monroe-current-session))
-     ("code" . ,(substring-no-properties str))
-     ("ns" . ,ns))
-   callback))
+  (let ((request `(("op" . "eval")
+                   ("session" . ,(monroe-current-session))
+                   ("code" . ,(substring-no-properties str)))))
+    (when ns
+      (setf request (append request
+                            `(("ns" . ,ns)))))
+
+    (monroe-send-request request callback)))
 
 (defun monroe-send-stdin (str callback)
   "Send stdin value."
@@ -243,7 +245,7 @@ the operations supported by an nREPL endpoint."
 
 (defun monroe-input-sender (proc input &optional ns)
   "Called when user enter data in REPL and when something is received in."
-  (monroe-send-eval-string input (monroe-make-response-handler) (or ns monroe-buffer-ns)))
+  (monroe-send-eval-string input (monroe-make-response-handler) ns))
 
 (defun monroe-handle-input ()
   "Called when requested user input."
@@ -397,7 +399,8 @@ will force connection closing, which will as result call '(monroe-sentinel)'."
     (end-of-defun)
     (let ((end (point)))
       (beginning-of-defun)
-      (monroe-eval-region (point) end (monroe-get-clojure-ns)))))
+      (monroe-eval-region (point) end
+                    (substring-no-properties (monroe-get-clojure-ns))))))
 
 (defun monroe-eval-expression-at-point ()
   "Figure out expression at point and send it for evaluation."
@@ -613,9 +616,10 @@ The following keys are available in `monroe-mode':
   \\{monroe-mode-map}"
 
   :syntax-table lisp-mode-syntax-table
-  (setq comint-prompt-regexp monroe-prompt-regexp)
-  (setq comint-input-sender 'monroe-input-sender)
-  (setq mode-line-process '(":%s"))
+  (setq-local comint-prompt-regexp monroe-prompt-regexp
+              comint-input-sender 'monroe-input-sender
+              comint-prompt-read-only t
+              mode-line-process '(":%s"))
   (add-hook 'completion-at-point-functions #'monroe-completion-at-point nil 'local)
 
   ;; a hack to keep comint happy

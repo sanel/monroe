@@ -359,14 +359,17 @@ Possible error signals:
 
 This function is not recursive. It is safe to parse very deeply
 nested inputs."
-  (with-temp-buffer
-    (insert string)
-    (setf (point) (point-min))
-    (prog1 (monroe-bencode-decode-from-buffer :list-type list-type
-				:dict-type dict-type
-				:coding-system coding-system)
-      (setf result (buffer-string))
-      )))
+  (let (responses)
+    (with-temp-buffer
+      (insert string)
+      (goto-char (point-min))
+      (while (< (point) (point-max))
+	(setf responses
+	      (append (monroe-bencode-decode-from-buffer :list-type list-type
+					   :dict-type dict-type
+					   :coding-system coding-system)
+		      responses)))
+      (delete-dups responses))))
 
 (provide 'monroe-bencode)
 
