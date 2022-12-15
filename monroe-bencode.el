@@ -3,9 +3,12 @@
 ;; This is free and unencumbered software released into the public domain.
 
 ;; Author: Christopher Wellons <wellons@nullprogram.com>
-;; URL: https://github.com/skeeto/emacs-monroe-bencode
+;; Modified by: Fermin MF <fmfs@posteo.net>
 
 ;;; Commentary:
+
+;; This file is based on https://github.com/skeeto/emacs-bencode
+
 
 ;; This package provides a strict and robust [monroe-bencode][monroe-bencode]
 ;; encoder and decoder.Encoding is precise, taking into account
