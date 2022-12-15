@@ -187,13 +187,13 @@ The CALLBACK function will be called when reply is received."
 the operations supported by an nREPL endpoint."
   (monroe-send-request '(("op" . "describe")) callback))
 
-(defun monroe-send-eval-string (str callback &optional ns)
+(cl-defun monroe-send-eval-string (str callback &optional (ns monroe-buffer-ns))
   "Send code for evaluation on given namespace."
   (monroe-send-request
    `(("op" . "eval")
      ("session" . ,(monroe-current-session))
      ("code" . ,(substring-no-properties str))
-     ,@(when ns `("ns" . ,ns)))
+     ("ns" . ,ns))
    callback))
 
 (defun monroe-send-stdin (str callback)
@@ -243,7 +243,7 @@ the operations supported by an nREPL endpoint."
 
 (defun monroe-input-sender (proc input &optional ns)
   "Called when user enter data in REPL and when something is received in."
-  (monroe-send-eval-string input (monroe-make-response-handler) ns))
+  (monroe-send-eval-string input (monroe-make-response-handler) (or ns monroe-buffer-ns)))
 
 (defun monroe-handle-input ()
   "Called when requested user input."
@@ -468,11 +468,11 @@ inside a container.")
   (let* ((bnds (bounds-of-thing-at-point 'symbol))
          (start (car bnds))
          (end (cdr bnds))
-         (ns (monroe-get-clojure-ns))
+         (ns (or (monroe-get-clojure-ns) monroe-buffer-ns))
          (sym (or (thing-at-point 'symbol t) ""))
          (response (monroe-send-sync-request
                     `(("op" . "completions")
-                      ,@(when ns `("ns" . ,ns))
+                      ("ns" . ,ns)
                       ("prefix" . ,sym)))))
     (monroe-dbind-response response (completions)
                      (when completions

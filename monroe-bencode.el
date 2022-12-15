@@ -363,10 +363,10 @@ nested inputs."
     (insert string)
     (setf (point) (point-min))
     (prog1 (monroe-bencode-decode-from-buffer :list-type list-type
-					      :dict-type dict-type
-					      :coding-system coding-system)
-      (when (< (point) (point-max))
-        (signal 'monroe-bencode-invalid-byte (cons "Trailing data" (point)))))))
+				:dict-type dict-type
+				:coding-system coding-system)
+      (setf result (buffer-string))
+      )))
 
 (provide 'monroe-bencode)
 
