@@ -40,6 +40,7 @@
 (require 'comint)
 (require 'cl-macs)
 (require 'subr-x)
+(require 'monroe-bencode)
 
 (defgroup monroe nil
   "Interaction with the nREPL Server."
@@ -130,77 +131,23 @@ Defaults to: trampoline repl :headless")
 ;; Idea for message handling (via callbacks) and destructuring response is shamelessly
 ;; stolen from nrepl.el.
 (defmacro monroe-dbind-response (response keys &rest body)
-  "Destructure an nREPL response dict."
+  "Destructure an nREPL RESPONSE dict.
+Bind the value of the provided KEYS and execute BODY."
   `(let ,(cl-loop for key in keys
-                  collect `(,key (cdr (assoc ,(format "%s" key) ,response))))
+                  collect `(,key (plist-get ,response ,(intern (format ":%s" key)))))
      ,@body))
 
-;;; Bencode
-;;; Stolen from nrepl.el which is adapted from http://www.emacswiki.org/emacs-en/bencode.el
-(defun monroe-bdecode-buffer ()
-  "Decode a bencoded string in the current buffer starting at point."
-  (cond
-   ((looking-at "i\\([-0-9]+\\)e")
-    (goto-char (match-end 0))
-    (string-to-number (match-string 1)))
-   ((looking-at "\\([0-9]+\\):")
-    (goto-char (match-end 0))
-    (let* ((start (point))
-           (end (byte-to-position (+ (position-bytes start) (string-to-number (match-string 1))))))
-      (goto-char end)
-      (buffer-substring-no-properties start end)))
-   ((looking-at "l")
-    (goto-char (match-end 0))
-    (let (result item)
-      (while (setq item (monroe-bdecode-buffer))
-        (setq result (cons item result)))
-      (nreverse result)))
-   ((looking-at "d")
-    (goto-char (match-end 0))
-    (let (dict key item)
-      (while (setq item (monroe-bdecode-buffer))
-        (if key
-            (setq dict (cons (cons key item) dict)
-                  key nil)
-          (unless (stringp item)
-            (error "Dictionary keys have to be strings: %s" item))
-          (setq key item)))
-      (cons 'dict (nreverse dict))))
-   ((looking-at "e")
-    (goto-char (match-end 0))
-    nil)
-   (t
-    (error "Cannot decode object: %d" (point)))))
-
-(defun monroe-encode (message)
-  "Encode message to nrepl format. The message format is
-'d<key-len>:key<val-len>:value<key-len>:key<val-len>:valuee',
-where the message is starting with 'd' and ending with 'e'."
-  (concat "d"
-    (apply 'concat
-      (mapcar (lambda (str)
-                (let ((s (if str str "")))
-                  (format "%d:%s" (string-bytes s) s)))
-              message))
-    "e"))
-
-(defun monroe-decode (str)
-  "Decode message using temporary buffer."
-  (with-temp-buffer
-    (save-excursion (insert str))
-    (let ((result '()))
-      (while (not (eobp))
-        (setq result (cons (monroe-bdecode-buffer) result)))
-      (nreverse result))))
-
 (defun monroe-send-request (request callback)
-  "Send request as elisp object and assign callback to
-be called when reply is received."
+  "Send REQUEST and assign CALLBACK.
+The CALLBACK function will be called when reply is received."
   (let* ((id       (number-to-string (cl-incf monroe-requests-counter)))
-         (message  (append (list "id" id) request))
-         (bmessage (monroe-encode message)))
+         (hash (make-hash-table :test 'equal)))
+    (puthash "id" id hash)
+    (cl-loop for (key . value) in request
+             do (puthash key value hash))
+
     (puthash id callback monroe-requests)
-    (process-send-string (monroe-connection) bmessage)))
+    (process-send-string (monroe-connection) (monroe-bencode-encode hash))))
 
 (defun monroe-send-sync-request (request)
   "Send request to nREPL server synchronously."
@@ -233,35 +180,37 @@ be called when reply is received."
 
 (defun monroe-send-hello (callback)
   "Initiate nREPL session."
-  (monroe-send-request '("op" "clone") callback))
+  (monroe-send-request '(("op" ."clone")) callback))
 
 (defun monroe-send-describe (callback)
   "Produce a machine- and human-readable directory and documentation for
 the operations supported by an nREPL endpoint."
-  (monroe-send-request '("op" "describe") callback))
+  (monroe-send-request '(("op" . "describe")) callback))
 
 (defun monroe-send-eval-string (str callback &optional ns)
   "Send code for evaluation on given namespace."
-  (monroe-send-request (append
-                        (list "op" "eval"
-                              "session" (monroe-current-session)
-                              "code" str)
-                        (and ns (list "ns" ns)))
-                       callback))
+  (monroe-send-request
+   `(("op" . "eval")
+     ("session" . ,(monroe-current-session))
+     ("code" . ,(substring-no-properties str))
+     ,@(when ns `("ns" . ,ns)))
+   callback))
 
 (defun monroe-send-stdin (str callback)
   "Send stdin value."
-  (monroe-send-request (list "op" "stdin"
-                             "session" (monroe-current-session)
-                             "stdin" str)
-                       callback))
+  (monroe-send-request
+   `(("op" . "stdin")
+     ("session" . ,(monroe-current-session))
+     ("stdin" . ,(substring-no-properties str)))
+   callback))
 
 (defun monroe-send-interrupt (request-id callback)
   "Send interrupt for pending requests."
-  (monroe-send-request (list "op" "interrupt"
-                             "session" (monroe-current-session)
-                             "interrupt-id" request-id)
-                       callback))
+  (monroe-send-request
+   `(("op" . "interrupt")
+     ("session" . ,(monroe-current-session))
+     ("interrupt-id" . ,request-id))
+   callback))
 
 ;;; code
 
@@ -321,8 +270,9 @@ the operations supported by an nREPL endpoint."
 buffer if the decode successful."
   (let* ((start   (point-min))
          (end     (point-max))
-         (data    (buffer-substring start end))
-         (decoded (monroe-decode data)))
+         (data    (buffer-substring-no-properties
+                   start end))
+         (decoded (monroe-bencode-decode data)))
     (delete-region start end)
     decoded))
 
@@ -340,19 +290,19 @@ monroe-repl-buffer."
     ;; This 'ignore-errors' is a hard hack here since 'accept-process-output' will call filter
     ;; which will be this function causing Emacs to hit max stack size limit.
     (ignore-errors
-        (when (eq ?e (aref string (- (length string) 1)))
-          (unless (accept-process-output process 0.01)
-            (while (> (buffer-size) 1)
-              (mapc #'monroe-dispatch (monroe-net-decode))))))))
+      (when (eq ?e (aref string (- (length string) 1)))
+        (unless (accept-process-output process 0.01)
+          (while (> (buffer-size) 1)
+            (monroe-dispatch (monroe-net-decode))))))))
 
 (defun monroe-new-session-handler (process)
   "Returns callback that is called when new connection is established."
   (lambda (response)
     (monroe-dbind-response response (id new-session)
-      (when new-session
-        (message "Connected.")
-        (setq monroe-session new-session)
-        (remhash id monroe-requests)))))
+                     (when new-session
+                       (message "Connected.")
+                       (setq monroe-session new-session)
+                       (remhash id monroe-requests)))))
 
 (defun monroe-valid-host-string (str default)
   "Used for getting valid string for host/port part."
@@ -497,34 +447,41 @@ inside a container.")
 
 (defun monroe-eval-jump (ns var)
   "Internal function to actually ask for var location via nrepl protocol."
-  (monroe-send-request (list "op" "lookup"
-                             "sym" var
-                             "ns" ns)
+  (monroe-send-request
+   `(("op" . "lookup")
+     ("sym" . ,(substring-no-properties var))
+     ("ns" . ,ns))
    (lambda (response)
      (monroe-dbind-response response (id info status)
-       (when (member "done" status)
-         (remhash id monroe-requests))
-       (when info
-         (monroe-dbind-response info (file line)
-           (monroe-jump-find-file (funcall monroe-translate-path-function file))
-           (when line
-             (goto-char (point-min))
-             (forward-line (1- line)))))))))
+                      (when (member "done" status)
+                        (remhash id monroe-requests))
+                      (when info
+                        (monroe-dbind-response info (file line)
+                                         (monroe-jump-find-file (funcall monroe-translate-path-function file))
+                                         (when line
+                                           (goto-char (point-min))
+                                           (forward-line (1- line)))))))))
 
 (defun monroe-completion-at-point ()
-  "Function to be used for the hook 'completion-at-point-functions'."
+  "Function to be used for the hook `completion-at-point-functions'."
   (interactive)
   (let* ((bnds (bounds-of-thing-at-point 'symbol))
          (start (car bnds))
          (end (cdr bnds))
          (ns (monroe-get-clojure-ns))
-         (sym (thing-at-point 'symbol))
-         (response (monroe-send-sync-request (list "op" "completions"
-                                                   "ns" ns
-                                                   "prefix" sym))))
+         (sym (or (thing-at-point 'symbol t) ""))
+         (response (monroe-send-sync-request
+                    `(("op" . "completions")
+                      ,@(when ns `("ns" . ,ns))
+                      ("prefix" . ,sym)))))
     (monroe-dbind-response response (completions)
-      (when completions
-        (list start end (mapcar 'cdadr completions) nil)))))
+                     (when completions
+                       (list start end
+                             (cl-loop for pcandidate in completions
+                                      collect
+                                      (string-trim
+                                       (plist-get pcandidate :candidate)))
+                             nil)))))
 
 (defun monroe-get-stacktrace ()
   "When error happens, print the stack trace"
@@ -575,7 +532,7 @@ remote paths, use absolute path."
   "Jump to definition of var at point."
   (interactive
    (list (if (thing-at-point 'symbol)
-             (substring-no-properties (thing-at-point 'symbol))
+             (thing-at-point 'symbol t)
            (read-string "Find var: "))))
   (defvar find-tag-marker-ring) ;; etags.el
   (require 'etags)
