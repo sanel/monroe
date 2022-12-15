@@ -1,5 +1,4 @@
-;;; -*- indent-tabs-mode: nil -*-
-;;; monroe.el --- Yet another client for nREPL
+;;; monroe.el --- Yet another client for nREPL -*- indent-tabs-mode: nil -*-
 
 ;; Copyright (c) 2014-2018 Sanel Zukan
 ;;
@@ -48,46 +47,41 @@
   :group 'applications)
 
 (defcustom monroe-repl-prompt-format "%s=> "
-  "String used for displaying prompt. '%s' is used as
-placeholder for storing current namespace."
+  "String used for displaying prompt.
+'%s' is used as placeholder for storing current namespace."
   :type 'string
   :group 'monroe)
 
 (defcustom monroe-prompt-regexp "^[^> \n]*>+:? *"
-  "Regexp to recognize prompts in Monroe more. The same regexp is
-used in inferior-lisp."
+  "Regexp to recognize prompts in Monroe more.
+The same regexp is used in `inferior-lisp'."
   :type 'regexp
   :group 'monroe)
 
 (defcustom monroe-default-host "localhost:7888"
-  "Default location where to connect to, unless explicitly given
-location and port. Location and port should be delimited with ':'."
+  "Default location to connect.
+Unless explicitly given location and port.
+Location and port should be delimited with ':'."
   :type 'string
   :group 'monroe)
 
 (defcustom monroe-detail-stacktraces nil
-  "If set to true, Monroe will try to get full stacktrace from thrown
-exception. Otherwise will just behave as standard REPL version."
+  "If set to true, Monroe will try to get full stacktrace from thrown exception.
+Otherwise will just behave as standard REPL version."
   :type 'boolean
   :group 'monroe)
 
-(defcustom monroe-old-style-stacktraces nil
-  "If set to true, Monroe will try to emit old style Clojure
-stacktraces using 'clojure.stacktrace/print-stack-trace'. This
-will work on older Clojure versions (e.g. 1.2) but will NOT work
-on ClojureScript. This option assumes 'monroe-detail-stacktraces'
-is true.
-
-DEPRECATED; use monroe-print-stack-trace-function instead."
-  :type 'boolean
-  :group 'monroe)
+(define-obsolete-variable-alias
+  'monroe-old-style-stacktraces
+  'monroe-print-stack-trace-function
+  "0.4.0")
 
 (defcustom monroe-print-stack-trace-function nil
   "Set to a clojure-side function in order to override stack-trace printing.
 
 Will be called upon error when `monroe-detail-stacktraces' is non-nil.
 
-e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
+e.g. clojure.stacktrace/print-stack-trace for old-style stack traces."
   :type 'symbol
   :group 'monroe)
 
@@ -104,21 +98,23 @@ e.g. 'clojure.stacktrace/print-stack-trace for old-style stack traces."
   "Serial number for message.")
 
 (defvar monroe-nrepl-sync-timeout 5
-  "Number of seconds to wait for a sync response")
+  "Number of seconds to wait for a sync response.")
 
 (defvar monroe-custom-handlers (make-hash-table :test 'equal)
   "Map of handlers for custom ops.")
 
 (defvar monroe-buffer-ns "user"
-  "Current clojure namespace for this buffer. This namespace
-is only advertised until first expression is evaluated, then is updated
-to the one used on nrepl side.")
+  "Current clojure namespace for this buffer.
+This namespace is only advertised until first expression is
+evaluated, then is updated to the one used on nrepl side.")
 
 (defvar monroe-nrepl-server-cmd "lein"
-  "Command to start nrepl server. Defaults to Leiningen")
+  "Command to start nrepl server.
+Defaults to Leiningen")
 
 (defvar monroe-nrepl-server-cmd-args "trampoline repl :headless"
-  "Arguments to pass to the nrepl command. Defaults to 'trampoline repl :headless'")
+  "Arguments to pass to the nrepl command.
+Defaults to: trampoline repl :headless")
 
 (defvar monroe-nrepl-server-buffer-name "monroe nrepl server")
 
@@ -532,10 +528,7 @@ inside a container.")
 
 (defun monroe-get-stacktrace ()
   "When error happens, print the stack trace"
-  (let ((pst (or monroe-print-stack-trace-function
-                 (if monroe-old-style-stacktraces
-                     'clojure.stacktrace/print-stack-trace
-                   'clojure.repl/pst))))
+  (let ((pst monroe-print-stack-trace-function))
     (monroe-send-eval-string
      (format "(do (require (symbol (namespace '%s))) (%s *e))" pst pst)
      (monroe-make-response-handler))))
