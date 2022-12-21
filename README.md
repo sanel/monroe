@@ -138,6 +138,8 @@ Keys                | Description
 
 - [Miracle](https://github.com/Saikyun/miracle) - an Arcadia nREPL client
 
+- [Rail](https://github.com/Sasanidas/Rail)     - a Clojure-less nREPL client
+
 ## Bug reports & patches
 
 Feel free to report any issues you find or you have suggestions for improvements.
